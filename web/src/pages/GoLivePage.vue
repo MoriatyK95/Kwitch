@@ -1,17 +1,4 @@
 <script setup lang="ts">
-/**
- * Go Live (host) page.
- *
- * Lifecycle of a broadcast, mapped to AtomicXCore:
- *   1. <StreamMixer/>  renders the host's streaming/preview canvas.
- *   2. <DeviceSelector/> opens camera+mic (useDeviceState) — auto-previewed.
- *   3. startLive({ liveId, liveName, isGiftEnabled, isLikeEnabled })
- *      creates the room and begins broadcasting.
- *   4. endLive() stops the broadcast.
- *
- * While live, the host gets the same chat / viewers / gifts panels the
- * audience sees, plus host-only co-guest approvals and co-host PK controls.
- */
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { StreamMixer, useLiveListState } from 'tuikit-atomicx-vue3';
@@ -30,17 +17,12 @@ const title = ref(`${session.userName}'s stream`);
 const isLive = ref(false);
 const busy = ref(false);
 const error = ref('');
-
-// A stable, SDK-safe room id derived from the host's userId. In a real product
-// the backend would allocate this; here we keep it deterministic per host.
 const liveId = `live_${session.userId}`;
 
 async function goLive() {
   busy.value = true;
   error.value = '';
   try {
-    // isGiftEnabled / isLikeEnabled turn on the engagement features so the
-    // GiftBar component has something to talk to.
     await startLive({
       liveId,
       liveName: title.value.trim() || liveId,
@@ -70,31 +52,45 @@ async function stopLive() {
 </script>
 
 <template>
-  <div class="golive">
+  <div class="golive" :class="{ live: isLive }">
     <div class="stage">
+      <header class="page-head">
+        <div>
+          <h1>{{ isLive ? 'You are live' : 'Go Live' }}</h1>
+          <p>{{ isLive ? 'Manage your broadcast' : 'Set up and start streaming' }}</p>
+        </div>
+        <div v-if="isLive" class="live-badge">
+          <span class="live-dot" />
+          LIVE
+        </div>
+      </header>
+
       <div class="video-wrap">
-        <!-- Host streaming view; auto-previews the selected camera. -->
         <StreamMixer />
-        <span v-if="isLive" class="badge-live live-overlay">live</span>
+        <span v-if="isLive" class="badge-live live-overlay">Live</span>
       </div>
 
-      <!-- Pre-broadcast controls. -->
-      <div v-if="!isLive" class="controls">
-        <DeviceSelector />
-        <div class="go-row">
-          <input v-model="title" placeholder="Stream title" />
-          <button class="primary" :disabled="busy" @click="goLive">
+      <div v-if="!isLive" class="setup panel">
+        <div class="panel-header">Stream setup</div>
+        <div class="setup-body">
+          <DeviceSelector />
+          <label class="title-field">
+            Stream title
+            <input v-model="title" placeholder="What are you streaming today?" />
+          </label>
+          <button class="kick start-btn" :disabled="busy" @click="goLive">
             {{ busy ? 'Starting…' : 'Start broadcast' }}
           </button>
+          <p class="hint">Room ID: <code>{{ liveId }}</code></p>
         </div>
-        <p class="hint">Room ID: <code>{{ liveId }}</code></p>
       </div>
 
-      <!-- Live controls. -->
-      <div v-else class="controls">
-        <div class="go-row">
-          <span><span class="live-dot" /> You are live — <strong>{{ title }}</strong></span>
-          <button :disabled="busy" @click="stopLive">End broadcast</button>
+      <div v-else class="live-controls">
+        <div class="live-bar panel">
+          <span><span class="live-dot" /> <strong>{{ title }}</strong></span>
+          <button class="end-btn" :disabled="busy" @click="stopLive">
+            {{ busy ? 'Ending…' : 'End broadcast' }}
+          </button>
         </div>
         <GiftBar />
         <CoGuestPanel :is-host="true" />
@@ -104,7 +100,6 @@ async function stopLive() {
       <p v-if="error" class="error">{{ error }}</p>
     </div>
 
-    <!-- Chat + viewers sidebar (only meaningful once live). -->
     <aside v-if="isLive" class="sidebar">
       <ViewerList />
       <LiveChat />
@@ -115,68 +110,158 @@ async function stopLive() {
 <style scoped>
 .golive {
   display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 16px;
+  grid-template-columns: 1fr;
   height: 100%;
   min-height: 0;
 }
-.golive:has(.sidebar) {
-  grid-template-columns: 1fr 320px;
+
+.golive.live {
+  grid-template-columns: 1fr var(--chat-width);
 }
+
 .stage {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-4);
   min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4);
 }
+
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.page-head h1 {
+  margin: 0;
+  font-size: var(--font-xl);
+  font-weight: 800;
+}
+
+.page-head p {
+  margin: var(--space-1) 0 0;
+  color: var(--text-dim);
+  font-size: var(--font-sm);
+}
+
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 14px;
+  border: 1px solid var(--live);
+  border-radius: 999px;
+  font-size: var(--font-xs);
+  font-weight: 800;
+  color: var(--live);
+  background: rgba(235, 4, 0, 0.1);
+}
+
 .video-wrap {
   position: relative;
   background: #000;
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   aspect-ratio: 16 / 9;
   overflow: hidden;
 }
+
 .video-wrap :deep(> *) {
   width: 100%;
   height: 100%;
 }
+
 .live-overlay {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: var(--space-3);
+  left: var(--space-3);
 }
-.controls {
+
+.setup-body {
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-4);
 }
-.go-row {
+
+.title-field {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.go-row input {
-  flex: 1;
-}
-.hint {
-  font-size: 12px;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--font-sm);
+  font-weight: 600;
   color: var(--text-dim);
-  margin: 0;
 }
+
+.title-field input {
+  height: 44px;
+}
+
+.start-btn {
+  align-self: flex-start;
+  padding: 10px 24px;
+  font-size: var(--font-base);
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+
 .hint code {
   background: var(--bg-elev-2);
   padding: 1px 5px;
   border-radius: 4px;
 }
-.error {
-  color: #ff6b6b;
-  font-size: 13px;
+
+.live-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
+
+.live-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+}
+
+.end-btn {
+  background: var(--live);
+  color: #fff;
+  font-weight: 700;
+}
+
+.end-btn:hover:not(:disabled) {
+  background: #c90300;
+}
+
+.error {
+  color: var(--error);
+  font-size: var(--font-sm);
+  margin: 0;
+}
+
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   min-height: 0;
+  border-left: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+
+@media (max-width: 1024px) {
+  .golive.live {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-left: none;
+    border-top: 1px solid var(--border);
+    max-height: 380px;
+  }
 }
 </style>

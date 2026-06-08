@@ -1,14 +1,67 @@
 :root {
+  /* Kwitch Figma tokens */
   --bg: #0e0e10;
   --bg-elev: #18181b;
   --bg-elev-2: #1f1f23;
-  --border: #2a2a2d;
+  --bg-hover: #2f2f35;
+  --border: #28282d;
+  --border-subtle: #28282d;
+
   --text: #efeff1;
   --text-dim: #adadb8;
-  --accent: #9147ff; /* Twitch-ish purple */
+  --text-muted: #777780;
+  --text-on-kick: #0d0d0d;
+
+  --accent: #9146ff;
   --accent-hover: #772ce8;
-  --live: #eb0400; /* the LIVE dot red */
-  --radius: 8px;
+  --accent-soft: rgba(145, 70, 255, 0.3);
+  --kick: #53fc18;
+  --kick-hover: #45d614;
+
+  --live: #ff4444;
+  --hero-bg: #261440;
+  --error: #ff6b6b;
+
+  --sidebar-width: 240px;
+  --header-height: 56px;
+  --chat-width: 360px;
+  --chat-border: #333339;
+
+  --gold: #ffd700;
+  --gold-dark: #40330d;
+  --mod: #00cc66;
+  --video-bg: #1f142e;
+  --video-area-bg: #140f1f;
+
+  --team-red: #ff4444;
+  --team-red-bg: #260f14;
+  --team-red-panel: #33141a;
+  --team-blue: #4488ff;
+  --team-blue-bg: #0f1426;
+  --team-blue-panel: #141a33;
+  --pk-header-bg: #1f0f2e;
+  --card-width: 276px;
+  --thumb-height: 155px;
+  --radius: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --font-xs: 10px;
+  --font-sm: 13px;
+  --font-base: 14px;
+  --font-lg: 16px;
+  --font-xl: 20px;
+  --font-2xl: 28px;
+
+  --transition: 0.15s ease;
 }
 
 * {
@@ -25,9 +78,10 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font-family:
-    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 14px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: var(--font-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 a {
@@ -39,24 +93,47 @@ button {
   font-family: inherit;
   cursor: pointer;
   border: none;
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   padding: 8px 14px;
   font-weight: 600;
+  font-size: var(--font-sm);
   background: var(--bg-elev-2);
   color: var(--text);
-  transition: background 0.15s ease;
+  transition: background var(--transition), color var(--transition);
 }
 
 button:hover:not(:disabled) {
-  background: var(--border);
+  background: var(--bg-hover);
 }
 
 button.primary {
   background: var(--accent);
+  color: #fff;
 }
 
 button.primary:hover:not(:disabled) {
   background: var(--accent-hover);
+}
+
+button.kick {
+  background: var(--kick);
+  color: var(--text-on-kick);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+button.kick:hover:not(:disabled) {
+  background: var(--kick-hover);
+}
+
+button.ghost {
+  background: var(--bg-elev-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+button.ghost:hover:not(:disabled) {
+  background: var(--bg-hover);
 }
 
 button:disabled {
@@ -67,12 +144,16 @@ button:disabled {
 input,
 select {
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--font-base);
   background: var(--bg-elev-2);
   color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  padding: 8px 12px;
+}
+
+input::placeholder {
+  color: var(--text-muted);
 }
 
 input:focus,
@@ -87,10 +168,24 @@ select:focus {
   height: 100%;
 }
 
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
 .app-main {
   flex: 1;
   overflow: auto;
-  padding: 20px;
+  min-width: 0;
+}
+
+.app-main--padded {
+  padding: var(--space-6);
+}
+
+.app-main--flush {
+  padding: 0;
 }
 
 .live-dot {
@@ -99,15 +194,97 @@ select:focus {
   height: 8px;
   border-radius: 50%;
   background: var(--live);
-  margin-right: 6px;
+  flex-shrink: 0;
 }
 
 .badge-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: var(--live);
   color: #fff;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 700;
-  padding: 2px 6px;
+  padding: 3px 6px;
   border-radius: 4px;
   text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.badge-live::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.badge-pk {
+  display: inline-flex;
+  align-items: center;
+  background: var(--kick);
+  color: var(--text-on-kick);
+  font-size: var(--font-xs);
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.badge-featured {
+  display: inline-flex;
+  align-items: center;
+  background: var(--kick);
+  color: var(--text-on-kick);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.panel {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.panel-header {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+  font-size: var(--font-sm);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-elev-2) 25%, var(--bg-hover) 50%, var(--bg-elev-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-lg);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-hover);
+  border-radius: 3px;
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-width: 56px;
+  }
 }

@@ -27,5 +27,10 @@ export const router = createRouter({
       component: () => import('@/pages/WatchPage.vue'),
       props: true,
     },
+    {
+      path: '/pk-arena',
+      name: 'pk-arena',
+      component: () => import('@/pages/PkBattlePage.vue'),
+    },
   ],
 });

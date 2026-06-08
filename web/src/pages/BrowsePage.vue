@@ -1,25 +1,18 @@
 <script setup lang="ts">
-/**
- * Browse / discovery page — a grid of currently-live channels.
- *
- * Powered by AtomicXCore's `useLiveListState`:
- *   - `fetchLiveList({ cursor, count })`  query the live room list
- *   - `liveList`                          reactive array of LiveInfo
- *
- * Click a card to navigate to /watch/:liveId.
- */
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLiveListState } from 'tuikit-atomicx-vue3';
+import ChannelCard from '@/components/ChannelCard.vue';
 
 const router = useRouter();
 const { liveList, fetchLiveList } = useLiveListState();
 const loading = ref(false);
 
+const featured = computed(() => liveList.value[0] ?? null);
+
 async function refresh() {
   loading.value = true;
   try {
-    // Empty cursor = first page. count caps how many rooms we pull.
     await fetchLiveList({ cursor: '', count: 50 });
   } catch (e) {
     console.warn('[browse] fetchLiveList failed', e);
@@ -28,111 +21,196 @@ async function refresh() {
   }
 }
 
+function formatViewers(count: number): string {
+  if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
+  return String(count);
+}
+
+function watchFeatured() {
+  if (featured.value) router.push(`/watch/${featured.value.liveId}`);
+}
+
 onMounted(refresh);
 </script>
 
 <template>
   <div class="browse">
-    <div class="browse-head">
-      <h2>Live channels</h2>
-      <div class="head-actions">
-        <button :disabled="loading" @click="refresh">
-          {{ loading ? 'Refreshing…' : 'Refresh' }}
+    <section v-if="featured && !loading" class="hero">
+      <div class="hero-overlay" aria-hidden="true" />
+      <div class="hero-content">
+        <span class="badge-featured">Featured Live</span>
+        <h2>{{ featured.liveName || featured.liveId }}</h2>
+        <p class="hero-meta">
+          {{ featured.liveOwner?.userName || featured.liveOwner?.userId }}
+          · {{ formatViewers(featured.currentViewerCount) }} watching
+        </p>
+        <div class="hero-actions">
+          <button class="primary watch-btn" @click="watchFeatured">Watch Now</button>
+          <button class="ghost follow-btn">Follow Both</button>
+        </div>
+      </div>
+    </section>
+
+    <section v-else-if="loading" class="hero hero-skeleton">
+      <div class="skeleton skeleton-hero" />
+    </section>
+
+    <section class="live-section">
+      <div class="section-head">
+        <h2>Live Now</h2>
+        <button class="see-all" :disabled="loading" @click="refresh">
+          {{ loading ? 'Loading…' : 'See All →' }}
         </button>
-        <button class="primary" @click="router.push('/go-live')">Go Live</button>
       </div>
-    </div>
 
-    <p v-if="!loading && liveList.length === 0" class="empty">
-      No one is live right now. Be the first — hit <strong>Go Live</strong>!
-    </p>
-
-    <div class="grid">
-      <div
-        v-for="live in liveList"
-        :key="live.liveId"
-        class="card"
-        @click="router.push(`/watch/${live.liveId}`)"
-      >
-        <div class="thumb" :style="live.coverUrl ? { backgroundImage: `url(${live.coverUrl})` } : {}">
-          <span class="badge-live">live</span>
-          <span class="viewers">{{ live.currentViewerCount }} 👁</span>
-        </div>
-        <div class="meta">
-          <div class="title">{{ live.liveName || live.liveId }}</div>
-          <div class="host">{{ live.liveOwner?.userName || live.liveOwner?.userId }}</div>
+      <div v-if="loading" class="grid">
+        <div v-for="n in 8" :key="n" class="skeleton-card">
+          <div class="skeleton skeleton-thumb" />
         </div>
       </div>
-    </div>
+
+      <div v-else-if="liveList.length === 0" class="empty">
+        <h3>No one is live right now</h3>
+        <p>Be the first to go live on Kwitch.</p>
+        <button class="kick" @click="router.push('/go-live')">Go Live</button>
+      </div>
+
+      <div v-else class="grid">
+        <ChannelCard
+          v-for="(live, i) in liveList"
+          :key="live.liveId"
+          :live="live"
+          :show-pk="i % 4 === 0"
+          @click="router.push(`/watch/${live.liveId}`)"
+        />
+      </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.browse-head {
+.browse {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 1152px;
+}
+
+.hero {
+  position: relative;
+  height: 320px;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: var(--hero-bg);
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--accent-soft);
+  border-radius: var(--radius-xl);
+}
+
+.hero-content {
+  position: relative;
+  padding: 48px var(--space-8) var(--space-6);
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.hero-content h2 {
+  margin: 0;
+  font-size: var(--font-2xl);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.hero-meta {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--font-lg);
+}
+
+.hero-actions {
+  display: flex;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+}
+
+.watch-btn {
+  padding: 12px 24px;
+  font-size: var(--font-base);
+  font-weight: 600;
+}
+
+.follow-btn {
+  padding: 12px 24px;
+  font-size: var(--font-base);
+  font-weight: 500;
+}
+
+.hero-skeleton .skeleton-hero {
+  height: 320px;
+  border-radius: var(--radius-xl);
+}
+
+.section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
 }
-.browse-head h2 {
+
+.section-head h2 {
   margin: 0;
-}
-.head-actions {
-  display: flex;
-  gap: 8px;
-}
-.empty {
-  color: var(--text-dim);
-}
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
-}
-.card {
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.12s ease;
-}
-.card:hover {
-  transform: translateY(-2px);
-  border-color: var(--accent);
-}
-.thumb {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  background: linear-gradient(135deg, #2a2a3a, #1a1a22);
-  background-size: cover;
-  background-position: center;
-}
-.thumb .badge-live {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-}
-.thumb .viewers {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-.meta {
-  padding: 10px 12px;
-}
-.title {
+  font-size: var(--font-xl);
   font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.host {
+
+.see-all {
+  background: transparent;
+  color: var(--accent);
+  font-weight: 500;
+  font-size: var(--font-base);
+  padding: 0;
+}
+
+.see-all:hover:not(:disabled) {
+  background: transparent;
+  opacity: 0.85;
+}
+
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.skeleton-card {
+  width: var(--card-width);
+}
+
+.skeleton-thumb {
+  height: var(--thumb-height);
+  border-radius: var(--radius-lg);
+}
+
+.empty {
+  text-align: center;
+  padding: var(--space-8);
+  background: var(--bg-elev);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-xl);
+  width: 100%;
+}
+
+.empty h3 {
+  margin: 0 0 var(--space-2);
+}
+
+.empty p {
+  margin: 0 0 var(--space-4);
   color: var(--text-dim);
-  font-size: 13px;
 }
 </style>

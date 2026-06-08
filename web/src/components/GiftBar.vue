@@ -1,17 +1,4 @@
 <script setup lang="ts">
-/**
- * Likes + gifts — lightweight engagement.
- *
- * Powered by AtomicXCore's `useLiveGiftState`:
- *   - `sendLikes({ count })`         fire off likes (the ❤️ tap)
- *   - `totalLikeCount`               running total of likes in the room
- *   - `giftInfoList` / `refreshGiftList()`  catalog of gifts configured in the
- *                                    TRTC Console
- *   - `sendGift({ giftId, count })`  send a specific gift
- *
- * Gifts must be configured in the TRTC Console for `giftInfoList` to populate;
- * if it's empty we still show the Like button, which needs no config.
- */
 import { onMounted } from 'vue';
 import { useLiveGiftState } from 'tuikit-atomicx-vue3';
 
@@ -19,7 +6,6 @@ const { sendLikes, totalLikeCount, giftInfoList, refreshGiftList, sendGift } =
   useLiveGiftState();
 
 onMounted(() => {
-  // Pull the gift catalog (no-op visually if none configured in the Console).
   refreshGiftList().catch((e) => console.warn('[gifts] refresh failed', e));
 });
 
@@ -33,27 +19,23 @@ function gift(giftId: string) {
 </script>
 
 <template>
-  <div class="engage">
-    <button class="like-btn" @click="like">❤️ Like</button>
-    <span class="like-total">{{ totalLikeCount }} likes</span>
+  <div class="engage panel">
+    <button class="like-btn" @click="like">Like</button>
+    <span class="like-total"><strong>{{ totalLikeCount }}</strong> likes</span>
 
     <div v-if="giftInfoList.length" class="gifts">
-      <template v-for="cat in giftInfoList" :key="cat.categoryID">
-        <button
-          v-for="g in cat.giftList"
-          :key="g.giftID"
-          class="gift-btn"
-          :title="`${g.name} · ${g.coins} coins`"
-          @click="gift(g.giftID)"
-        >
-          <img v-if="g.iconUrl" :src="g.iconUrl" :alt="g.name" />
-          <span v-else>🎁</span>
-        </button>
-      </template>
+      <button
+        v-for="g in giftInfoList.flatMap((cat) => cat.giftList)"
+        :key="g.giftID"
+        class="gift-btn"
+        :title="`${g.name} · ${g.coins} coins`"
+        @click="gift(g.giftID)"
+      >
+        <img v-if="g.iconUrl" :src="g.iconUrl" :alt="g.name" />
+        <span v-else>🎁</span>
+      </button>
     </div>
-    <p v-else class="gift-hint">
-      Configure gifts in the TRTC Console to enable the gift bar.
-    </p>
+    <p v-else class="gift-hint">Configure gifts in the TRTC Console to enable the gift bar.</p>
   </div>
 </template>
 
@@ -61,39 +43,59 @@ function gift(giftId: string) {
 .engage {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
   flex-wrap: wrap;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 14px;
+  padding: var(--space-3) var(--space-4);
 }
+
 .like-btn {
   background: var(--accent);
+  color: #fff;
+  font-weight: 700;
 }
+
+.like-btn:hover {
+  background: var(--accent-hover);
+}
+
 .like-total {
-  font-size: 13px;
+  font-size: var(--font-sm);
   color: var(--text-dim);
 }
+
+.like-total strong {
+  color: var(--kick);
+}
+
 .gifts {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  margin-left: auto;
 }
+
 .gift-btn {
   width: 40px;
   height: 40px;
   padding: 4px;
   display: grid;
   place-items: center;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
 }
+
+.gift-btn:hover {
+  border-color: var(--accent);
+}
+
 .gift-btn img {
   max-width: 100%;
   max-height: 100%;
 }
+
 .gift-hint {
-  font-size: 12px;
-  color: var(--text-dim);
+  font-size: var(--font-xs);
+  color: var(--text-muted);
   margin: 0;
 }
 </style>

@@ -1,20 +1,20 @@
 <script setup lang="ts">
-/**
- * App shell. Responsibilities:
- *   - Render the dev-mode banner + top nav.
- *   - Gate the whole app behind a single login (AtomicXCore requires login
- *     before any other feature works). We auto-generate a random userId so a
- *     newcomer can click "Enter" and immediately be in — no signup flow.
- */
-import { ref } from 'vue';
-import { RouterView, useRouter } from 'vue-router';
+import { computed, ref } from 'vue';
+import { RouterView, useRoute } from 'vue-router';
 import { loginToTrtc, session, randomUserId, trtcConfig } from '@/trtc';
 import DevModeBanner from '@/components/DevModeBanner.vue';
+import AppSidebar from '@/components/AppSidebar.vue';
+import AppHeader from '@/components/AppHeader.vue';
+import KwitchLogo from '@/components/KwitchLogo.vue';
 
-const router = useRouter();
+const route = useRoute();
 const userName = ref('');
 const loggingIn = ref(false);
 const error = ref('');
+
+const isStreamPage = computed(
+  () => route.name === 'watch' || route.name === 'go-live',
+);
 
 async function enter() {
   if (!userName.value.trim()) {
@@ -24,7 +24,6 @@ async function enter() {
   loggingIn.value = true;
   error.value = '';
   try {
-    // userId must be SDK-safe; userName is just the display label.
     await loginToTrtc(randomUserId(), userName.value.trim());
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
@@ -38,40 +37,47 @@ async function enter() {
   <div class="app-shell">
     <DevModeBanner />
 
-    <!-- Login gate: shown until TRTC login succeeds. -->
     <div v-if="!session.isLoggedIn" class="login-gate">
+      <div class="login-bg" aria-hidden="true" />
       <div class="login-card">
-        <h1>🎥 TRTC Live</h1>
-        <p class="subtitle">A Twitch/Kick-style demo on the TRTC Web Core SDK</p>
+        <KwitchLogo />
+        <h1>Welcome to Kwitch</h1>
+        <p class="subtitle">Watch live streams or go live in seconds</p>
+
+        <div class="login-form">
+          <label for="display-name">Display name</label>
+          <input
+            id="display-name"
+            v-model="userName"
+            placeholder="Choose your username"
+            @keyup.enter="enter"
+          />
+          <button class="kick enter-btn" :disabled="loggingIn" @click="enter">
+            {{ loggingIn ? 'Connecting…' : 'Log In' }}
+          </button>
+          <p v-if="error" class="error">{{ error }}</p>
+        </div>
+
         <p class="appid">
-          SDKAppID: <code>{{ trtcConfig.sdkAppId || '(not set)' }}</code> · mode:
-          <code>{{ trtcConfig.userSigMode }}</code>
+          SDKAppID <code>{{ trtcConfig.sdkAppId || '(not set)' }}</code>
+          · <code>{{ trtcConfig.userSigMode }}</code>
         </p>
-        <input
-          v-model="userName"
-          placeholder="Pick a display name"
-          @keyup.enter="enter"
-        />
-        <button class="primary" :disabled="loggingIn" @click="enter">
-          {{ loggingIn ? 'Connecting…' : 'Enter' }}
-        </button>
-        <p v-if="error" class="error">{{ error }}</p>
       </div>
     </div>
 
-    <!-- Authenticated app. -->
     <template v-else>
-      <header class="top-nav">
-        <nav>
-          <a class="brand" @click="router.push('/')">🎥 TRTC Live</a>
-          <a class="nav-link" @click="router.push('/')">Browse</a>
-          <a class="nav-link" @click="router.push('/go-live')">Go Live</a>
-        </nav>
-        <span class="me">Signed in as <strong>{{ session.userName }}</strong></span>
-      </header>
-      <main class="app-main">
-        <RouterView />
-      </main>
+      <div class="app-body">
+        <AppSidebar />
+        <div class="app-content">
+          <AppHeader :flush="isStreamPage" />
+          <main
+            class="app-main"
+            :class="isStreamPage ? 'app-main--flush' : 'app-main--padded'"
+          >
+            <RouterView />
+          </main>
+        </div>
+      </div>
     </template>
   </div>
 </template>
@@ -81,67 +87,92 @@ async function enter() {
   flex: 1;
   display: grid;
   place-items: center;
+  position: relative;
 }
+
+.login-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 30% 40%, rgba(145, 71, 255, 0.2), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 70% 60%, rgba(83, 252, 24, 0.08), transparent 50%),
+    var(--bg);
+}
+
 .login-card {
+  position: relative;
   background: var(--bg-elev);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 32px;
-  width: 360px;
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  width: min(400px, calc(100vw - 32px));
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: var(--space-4);
   text-align: center;
+  box-shadow: var(--shadow-md);
 }
+
 .login-card h1 {
   margin: 0;
+  font-size: var(--font-2xl);
+  font-weight: 800;
 }
+
 .subtitle {
   color: var(--text-dim);
   margin: 0;
 }
-.appid {
-  font-size: 12px;
-  color: var(--text-dim);
-  margin: 0 0 8px;
+
+.login-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: left;
 }
-.appid code,
-.error code {
+
+.login-form label {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.login-form input {
+  width: 100%;
+  height: 44px;
+}
+
+.enter-btn {
+  height: 44px;
+  margin-top: var(--space-2);
+  font-size: var(--font-base);
+}
+
+.appid {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.appid code {
   background: var(--bg-elev-2);
   padding: 1px 5px;
   border-radius: 4px;
 }
+
 .error {
-  color: #ff6b6b;
-  font-size: 13px;
-  word-break: break-word;
+  color: var(--error);
+  font-size: var(--font-sm);
+  margin: 0;
 }
-.top-nav {
+
+.app-content {
+  flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
-  background: var(--bg-elev);
-  border-bottom: 1px solid var(--border);
-}
-.top-nav nav {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-.brand {
-  font-weight: 800;
-  cursor: pointer;
-}
-.nav-link {
-  color: var(--text-dim);
-  cursor: pointer;
-}
-.nav-link:hover {
-  color: var(--text);
-}
-.me {
-  font-size: 13px;
-  color: var(--text-dim);
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
 }
 </style>

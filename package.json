@@ -1,0 +1,31 @@
+{
+  "name": "trtc-twitch-clone",
+  "version": "1.0.0",
+  "private": true,
+  "description": "An open-source, learning-focused Twitch/Kick-style live-streaming clone built on the TRTC AtomicXCore Web SDK.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "//": "Convenience scripts that delegate to web/ and server/. Run npm install in each the first time.",
+    "install:all": "npm --prefix web install && npm --prefix server install",
+    "dev": "npm --prefix web run dev",
+    "dev:server": "npm --prefix server run dev",
+    "build": "npm --prefix web run build",
+    "build:server": "npm --prefix server run build",
+    "preview": "npm --prefix web run preview",
+    "start:server": "npm --prefix server start",
+    "lint": "npm --prefix web run lint"
+  },
+  "keywords": [
+    "trtc",
+    "tencent-rtc",
+    "live-streaming",
+    "webrtc",
+    "vue3",
+    "atomicxcore",
+    "twitch-clone",
+    "learning"
+  ]
+}

@@ -12,12 +12,12 @@ const topNav = [
   { label: 'Browse', path: '/' },
   { label: 'Following', path: '/' },
   { label: 'Categories', path: '/' },
-  { label: 'PK Arena', path: '/go-live' },
+  { label: 'PK Arena', path: '/pk-arena' },
 ];
 
 function isActive(item: (typeof topNav)[0]) {
   if (item.label === 'Browse') return route.path === '/';
-  if (item.label === 'PK Arena') return route.path === '/go-live';
+  if (item.label === 'PK Arena') return route.path === '/pk-arena';
   return false;
 }
 

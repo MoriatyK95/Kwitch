@@ -1,18 +1,27 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { LiveView, useLiveListState, LiveListEvent } from 'tuikit-atomicx-vue3';
-import LiveChat from '@/components/LiveChat.vue';
-import ViewerList from '@/components/ViewerList.vue';
-import GiftBar from '@/components/GiftBar.vue';
+import { LiveView, useLiveListState, LiveListEvent, useLiveAudienceState } from 'tuikit-atomicx-vue3';
+import StreamMiniNav from '@/components/StreamMiniNav.vue';
+import StreamChatPanel from '@/components/StreamChatPanel.vue';
 import CoGuestPanel from '@/components/CoGuestPanel.vue';
 
 const props = defineProps<{ liveId: string }>();
 const router = useRouter();
 const { joinLive, leaveLive, subscribeEvent, unsubscribeEvent } = useLiveListState();
+const { audienceCount, fetchAudienceList } = useLiveAudienceState();
 
 const status = ref<'joining' | 'watching' | 'ended' | 'kicked' | 'error'>('joining');
 const errorMsg = ref('');
+
+const streamTitle = computed(() => props.liveId.replace(/^live_/, '').replace(/_/g, ' ') || props.liveId);
+const hostInitial = computed(() => streamTitle.value.charAt(0).toUpperCase());
+
+const tags = ['Just Chatting', 'Live', 'English'];
+
+function formatViewers(count: number): string {
+  return count.toLocaleString();
+}
 
 function handleLiveEnded() {
   status.value = 'ended';
@@ -22,6 +31,7 @@ function handleKicked() {
 }
 
 onMounted(async () => {
+  fetchAudienceList().catch(() => {});
   subscribeEvent(LiveListEvent.onLiveEnded, handleLiveEnded);
   subscribeEvent(LiveListEvent.onKickedOutOfLive, handleKicked);
   try {
@@ -45,84 +55,97 @@ function backToBrowse() {
 </script>
 
 <template>
-  <div class="watch">
-    <div class="stage">
-      <div class="video-wrap">
-        <LiveView v-show="status === 'watching'" />
+  <div class="live-stream">
+    <StreamMiniNav />
 
-        <div v-if="status !== 'watching'" class="overlay">
-          <template v-if="status === 'joining'">
-            <div class="spinner" />
-            <p>Connecting to channel…</p>
-          </template>
-          <template v-else-if="status === 'ended'">
-            <h3>Stream ended</h3>
-            <p>The host has finished broadcasting.</p>
-            <button class="primary" @click="backToBrowse">Browse channels</button>
-          </template>
-          <template v-else-if="status === 'kicked'">
-            <h3>You were removed</h3>
-            <p>A moderator removed you from this channel.</p>
-            <button class="primary" @click="backToBrowse">Browse channels</button>
-          </template>
-          <template v-else>
-            <h3>Couldn't join</h3>
-            <p class="error-text">{{ errorMsg }}</p>
-            <button class="primary" @click="backToBrowse">Browse channels</button>
-          </template>
-        </div>
-      </div>
+    <div class="content">
+      <div class="player-section">
+        <div class="video-wrap">
+          <LiveView v-show="status === 'watching'" />
 
-      <div v-if="status === 'watching'" class="channel-bar">
-        <div class="channel-info">
-          <span class="channel-avatar">{{ liveId.charAt(0).toUpperCase() }}</span>
-          <div>
-            <div class="channel-title-row">
-              <span class="badge-live">Live</span>
-              <h2>{{ liveId }}</h2>
-            </div>
-            <p class="channel-sub">Just Chatting</p>
+          <div v-if="status !== 'watching'" class="overlay">
+            <template v-if="status === 'joining'">
+              <div class="spinner" />
+              <p>Connecting to channel…</p>
+            </template>
+            <template v-else-if="status === 'ended'">
+              <h3>Stream ended</h3>
+              <p>The host has finished broadcasting.</p>
+              <button class="primary" @click="backToBrowse">Browse channels</button>
+            </template>
+            <template v-else-if="status === 'kicked'">
+              <h3>You were removed</h3>
+              <p>A moderator removed you from this channel.</p>
+              <button class="primary" @click="backToBrowse">Browse channels</button>
+            </template>
+            <template v-else>
+              <h3>Couldn't join</h3>
+              <p class="error-text">{{ errorMsg }}</p>
+              <button class="primary" @click="backToBrowse">Browse channels</button>
+            </template>
+          </div>
+
+          <div v-if="status === 'watching'" class="video-badges">
+            <span class="badge-live">Live</span>
+            <span class="viewers">👁 {{ formatViewers(audienceCount) }} watching</span>
           </div>
         </div>
-        <button class="follow-btn">Follow</button>
+
+        <div v-if="status === 'watching'" class="stream-info">
+          <div class="info-row">
+            <div class="host-block">
+              <span class="avatar">{{ hostInitial }}</span>
+              <div class="host-text">
+                <h1>{{ streamTitle }}</h1>
+                <p>{{ liveId }} • Just Chatting • English</p>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="primary follow-btn">Follow</button>
+              <button class="subscribe-btn">Subscribe</button>
+              <button class="gift-btn">🎁 Gift</button>
+            </div>
+          </div>
+          <div class="tags">
+            <span v-for="tag in tags" :key="tag" class="tag">{{ tag }}</span>
+          </div>
+          <CoGuestPanel :is-host="false" />
+        </div>
       </div>
 
-      <div v-if="status === 'watching'" class="under-video">
-        <GiftBar />
-        <CoGuestPanel :is-host="false" />
-      </div>
+      <StreamChatPanel v-if="status === 'watching'" />
     </div>
-
-    <aside v-if="status === 'watching'" class="sidebar">
-      <ViewerList />
-      <LiveChat />
-    </aside>
   </div>
 </template>
 
 <style scoped>
-.watch {
-  display: grid;
-  grid-template-columns: 1fr var(--chat-width);
+.live-stream {
+  display: flex;
+  flex-direction: column;
   height: 100%;
+  min-height: 0;
+  background: var(--bg);
+}
+
+.content {
+  display: flex;
+  flex: 1;
   min-height: 0;
 }
 
-.stage {
+.player-section {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  min-height: 0;
-  overflow-y: auto;
-  padding: var(--space-4);
+  min-width: 0;
+  background: var(--video-area-bg);
 }
 
 .video-wrap {
   position: relative;
-  background: #000;
-  border-radius: var(--radius-lg);
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
+  flex: 1;
+  min-height: 280px;
+  background: var(--video-bg);
 }
 
 .video-wrap :deep(> *) {
@@ -138,8 +161,8 @@ function backToBrowse() {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
+  background: var(--video-bg);
   text-align: center;
-  background: var(--bg-elev);
 }
 
 .overlay h3 {
@@ -152,8 +175,8 @@ function backToBrowse() {
 }
 
 .spinner {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border: 3px solid var(--border);
   border-top-color: var(--accent);
   border-radius: 50%;
@@ -171,86 +194,134 @@ function backToBrowse() {
   font-size: var(--font-sm);
 }
 
-.channel-bar {
+.video-badges {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  display: flex;
+  gap: var(--space-2);
+  z-index: 2;
+}
+
+.viewers {
+  background: rgba(0, 0, 0, 0.6);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.stream-info {
+  background: var(--bg-elev);
+  padding: var(--space-4) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.info-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
+  flex-wrap: wrap;
 }
 
-.channel-info {
+.host-block {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   min-width: 0;
 }
 
-.channel-avatar {
+.avatar {
   width: 48px;
   height: 48px;
   border-radius: 50%;
   background: var(--accent);
   display: grid;
   place-items: center;
-  font-weight: 800;
+  font-weight: 700;
+  font-size: var(--font-lg);
   flex-shrink: 0;
 }
 
-.channel-title-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+.host-text {
+  min-width: 0;
 }
 
-.channel-title-row h2 {
+.host-text h1 {
   margin: 0;
-  font-size: var(--font-lg);
+  font-size: 18px;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.channel-sub {
-  margin: 2px 0 0;
-  font-size: var(--font-sm);
+.host-text p {
+  margin: 4px 0 0;
+  font-size: var(--font-base);
   color: var(--text-dim);
 }
 
-.follow-btn {
-  background: var(--accent);
-  color: #fff;
-  font-weight: 700;
-  padding: 8px 20px;
+.actions {
+  display: flex;
+  gap: var(--space-2);
   flex-shrink: 0;
 }
 
-.follow-btn:hover {
-  background: var(--accent-hover);
+.follow-btn {
+  padding: 10px 20px;
+  font-weight: 600;
 }
 
-.under-video {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+.subscribe-btn {
+  padding: 10px 20px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-weight: 500;
 }
 
-.sidebar {
+.subscribe-btn:hover {
+  background: var(--accent-soft);
+}
+
+.gift-btn {
+  padding: 10px 20px;
+  background: var(--gold);
+  color: #1a1400;
+  font-weight: 600;
+}
+
+.gift-btn:hover {
+  filter: brightness(1.05);
+}
+
+.tags {
   display: flex;
-  flex-direction: column;
-  min-height: 0;
-  border-left: 1px solid var(--border);
-  background: var(--bg-elev);
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tag {
+  padding: 4px 10px;
+  background: var(--bg-elev-2);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
 }
 
 @media (max-width: 1024px) {
-  .watch {
-    grid-template-columns: 1fr;
+  .content {
+    flex-direction: column;
   }
 
-  .sidebar {
-    border-left: none;
-    border-top: 1px solid var(--border);
-    max-height: 380px;
+  .chat-panel {
+    max-height: 360px;
   }
 }
 </style>

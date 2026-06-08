@@ -12,8 +12,12 @@ const userName = ref('');
 const loggingIn = ref(false);
 const error = ref('');
 
-const isStreamPage = computed(
-  () => route.name === 'watch' || route.name === 'go-live',
+const isImmersivePage = computed(
+  () => route.name === 'watch' || route.name === 'pk-arena',
+);
+
+const isFlushPage = computed(
+  () => route.name === 'watch' || route.name === 'go-live' || route.name === 'pk-arena',
 );
 
 async function enter() {
@@ -66,16 +70,21 @@ async function enter() {
     </div>
 
     <template v-else>
-      <AppHeader />
-      <div class="app-body">
-        <AppSidebar />
-        <main
-          class="app-main"
-          :class="isStreamPage ? 'app-main--flush' : 'app-main--padded'"
-        >
-          <RouterView />
-        </main>
-      </div>
+      <template v-if="!isImmersivePage">
+        <AppHeader />
+        <div class="app-body">
+          <AppSidebar />
+          <main
+            class="app-main"
+            :class="isFlushPage ? 'app-main--flush' : 'app-main--padded'"
+          >
+            <RouterView />
+          </main>
+        </div>
+      </template>
+      <main v-else class="app-main app-main--immersive">
+        <RouterView />
+      </main>
     </template>
   </div>
 </template>
@@ -162,5 +171,11 @@ async function enter() {
   color: var(--error);
   font-size: var(--font-sm);
   margin: 0;
+}
+
+.app-main--immersive {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 </style>

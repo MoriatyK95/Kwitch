@@ -24,7 +24,22 @@
 
   --sidebar-width: 240px;
   --header-height: 56px;
-  --chat-width: 340px;
+  --chat-width: 360px;
+  --chat-border: #333339;
+
+  --gold: #ffd700;
+  --gold-dark: #40330d;
+  --mod: #00cc66;
+  --video-bg: #1f142e;
+  --video-area-bg: #140f1f;
+
+  --team-red: #ff4444;
+  --team-red-bg: #260f14;
+  --team-red-panel: #33141a;
+  --team-blue: #4488ff;
+  --team-blue-bg: #0f1426;
+  --team-blue-panel: #141a33;
+  --pk-header-bg: #1f0f2e;
   --card-width: 276px;
   --thumb-height: 155px;
   --radius: 6px;

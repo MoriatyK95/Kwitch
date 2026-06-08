@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { StreamMixer, useLiveListState } from 'tuikit-atomicx-vue3';
+import { StreamMixer, useLiveListState, useVideoMixerState, useDeviceState } from 'tuikit-atomicx-vue3';
+import { TRTCMediaSourceType } from '@tencentcloud/tuiroom-engine-js';
 import { session } from '@/trtc';
 import DeviceSelector from '@/components/DeviceSelector.vue';
 import LiveChat from '@/components/LiveChat.vue';
@@ -12,12 +13,36 @@ import CoHostPanel from '@/components/CoHostPanel.vue';
 
 const router = useRouter();
 const { startLive, endLive } = useLiveListState();
+const { addMediaSource, clearMediaSource } = useVideoMixerState();
+const { cameraList, currentCamera } = useDeviceState();
 
 const title = ref(`${session.userName}'s stream`);
 const isLive = ref(false);
 const busy = ref(false);
 const error = ref('');
 const liveId = `live_${session.userId}`;
+
+// The host's camera device is opened by DeviceSelector, but TRTC only
+// publishes what the video mixer composites. Without adding the camera as a
+// mixer source, viewers receive audio but a black video. Add it explicitly.
+async function publishCamera() {
+  const cameraId = currentCamera.value?.deviceId || cameraList.value[0]?.deviceId || 'default';
+  await addMediaSource({
+    id: `${TRTCMediaSourceType.kCamera}_main`,
+    type: TRTCMediaSourceType.kCamera,
+    name: 'Camera',
+    camera: {
+      cameraId,
+      resolution: { width: 1280, height: 720 },
+      fps: 15,
+    },
+    layout: {
+      rect: { left: 0, top: 0, right: 1280, bottom: 720 },
+      zOrder: 0,
+    },
+    isSelected: false,
+  });
+}
 
 async function goLive() {
   busy.value = true;
@@ -29,6 +54,7 @@ async function goLive() {
       isGiftEnabled: true,
       isLikeEnabled: true,
     });
+    await publishCamera();
     isLive.value = true;
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
@@ -40,6 +66,7 @@ async function goLive() {
 async function stopLive() {
   busy.value = true;
   try {
+    await clearMediaSource().catch(() => {});
     await endLive();
     isLive.value = false;
     router.push('/');

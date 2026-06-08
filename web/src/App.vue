@@ -66,17 +66,15 @@ async function enter() {
     </div>
 
     <template v-else>
+      <AppHeader />
       <div class="app-body">
         <AppSidebar />
-        <div class="app-content">
-          <AppHeader :flush="isStreamPage" />
-          <main
-            class="app-main"
-            :class="isStreamPage ? 'app-main--flush' : 'app-main--padded'"
-          >
-            <RouterView />
-          </main>
-        </div>
+        <main
+          class="app-main"
+          :class="isStreamPage ? 'app-main--flush' : 'app-main--padded'"
+        >
+          <RouterView />
+        </main>
       </div>
     </template>
   </div>
@@ -94,7 +92,7 @@ async function enter() {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 70% 50% at 30% 40%, rgba(145, 71, 255, 0.2), transparent 60%),
+    radial-gradient(ellipse 70% 50% at 30% 40%, rgba(145, 70, 255, 0.2), transparent 60%),
     radial-gradient(ellipse 50% 40% at 70% 60%, rgba(83, 252, 24, 0.08), transparent 50%),
     var(--bg);
 }
@@ -111,13 +109,12 @@ async function enter() {
   align-items: center;
   gap: var(--space-4);
   text-align: center;
-  box-shadow: var(--shadow-md);
 }
 
 .login-card h1 {
   margin: 0;
-  font-size: var(--font-2xl);
-  font-weight: 800;
+  font-size: var(--font-xl);
+  font-weight: 700;
 }
 
 .subtitle {
@@ -147,11 +144,10 @@ async function enter() {
 .enter-btn {
   height: 44px;
   margin-top: var(--space-2);
-  font-size: var(--font-base);
 }
 
 .appid {
-  font-size: var(--font-xs);
+  font-size: 11px;
   color: var(--text-muted);
   margin: 0;
 }
@@ -166,13 +162,5 @@ async function enter() {
   color: var(--error);
   font-size: var(--font-sm);
   margin: 0;
-}
-
-.app-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
 }
 </style>

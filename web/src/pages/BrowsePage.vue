@@ -35,9 +35,8 @@ onMounted(refresh);
 
 <template>
   <div class="browse">
-    <!-- Featured hero -->
     <section v-if="featured && !loading" class="hero">
-      <div class="hero-bg" aria-hidden="true" />
+      <div class="hero-overlay" aria-hidden="true" />
       <div class="hero-content">
         <span class="badge-featured">Featured Live</span>
         <h2>{{ featured.liveName || featured.liveId }}</h2>
@@ -46,8 +45,8 @@ onMounted(refresh);
           · {{ formatViewers(featured.currentViewerCount) }} watching
         </p>
         <div class="hero-actions">
-          <button class="primary" @click="watchFeatured">Watch Now</button>
-          <button class="ghost hero-follow">Follow</button>
+          <button class="primary watch-btn" @click="watchFeatured">Watch Now</button>
+          <button class="ghost follow-btn">Follow Both</button>
         </div>
       </div>
     </section>
@@ -56,7 +55,6 @@ onMounted(refresh);
       <div class="skeleton skeleton-hero" />
     </section>
 
-    <!-- Live Now -->
     <section class="live-section">
       <div class="section-head">
         <h2>Live Now</h2>
@@ -68,10 +66,6 @@ onMounted(refresh);
       <div v-if="loading" class="grid">
         <div v-for="n in 8" :key="n" class="skeleton-card">
           <div class="skeleton skeleton-thumb" />
-          <div class="skeleton-meta">
-            <div class="skeleton skeleton-avatar" />
-            <div class="skeleton skeleton-line" />
-          </div>
         </div>
       </div>
 
@@ -86,7 +80,7 @@ onMounted(refresh);
           v-for="(live, i) in liveList"
           :key="live.liveId"
           :live="live"
-          :show-pk="i % 3 === 1"
+          :show-pk="i % 4 === 0"
           @click="router.push(`/watch/${live.liveId}`)"
         />
       </div>
@@ -96,55 +90,69 @@ onMounted(refresh);
 
 <style scoped>
 .browse {
-  max-width: 1400px;
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 1152px;
 }
 
 .hero {
   position: relative;
+  height: 320px;
   border-radius: var(--radius-xl);
   overflow: hidden;
-  margin-bottom: var(--space-6);
-  min-height: 200px;
-  border: 1px solid var(--border);
+  background: var(--hero-bg);
 }
 
-.hero-bg {
+.hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #3d1f7a 0%, #9147ff 40%, #1a1a2e 100%);
+  background: var(--accent-soft);
+  border-radius: var(--radius-xl);
 }
 
 .hero-content {
   position: relative;
-  padding: var(--space-6) var(--space-8);
-  max-width: 560px;
+  padding: 48px var(--space-8) var(--space-6);
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 .hero-content h2 {
-  margin: var(--space-3) 0 var(--space-2);
+  margin: 0;
   font-size: var(--font-2xl);
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
 }
 
 .hero-meta {
-  margin: 0 0 var(--space-4);
+  margin: 0;
   color: var(--text-dim);
-  font-size: var(--font-sm);
+  font-size: var(--font-lg);
 }
 
 .hero-actions {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-3);
+  padding-top: var(--space-2);
 }
 
-.hero-follow {
-  border: 1px solid var(--border);
+.watch-btn {
+  padding: 12px 24px;
+  font-size: var(--font-base);
+  font-weight: 600;
+}
+
+.follow-btn {
+  padding: 12px 24px;
+  font-size: var(--font-base);
+  font-weight: 500;
 }
 
 .hero-skeleton .skeleton-hero {
-  height: 200px;
+  height: 320px;
   border-radius: var(--radius-xl);
 }
 
@@ -152,7 +160,6 @@ onMounted(refresh);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--space-4);
 }
 
 .section-head h2 {
@@ -164,47 +171,29 @@ onMounted(refresh);
 .see-all {
   background: transparent;
   color: var(--accent);
-  font-weight: 600;
-  padding: 4px 8px;
+  font-weight: 500;
+  font-size: var(--font-base);
+  padding: 0;
 }
 
 .see-all:hover:not(:disabled) {
-  background: var(--accent-soft);
+  background: transparent;
+  opacity: 0.85;
 }
 
 .grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--space-5) var(--space-4);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
 }
 
 .skeleton-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  width: var(--card-width);
 }
 
 .skeleton-thumb {
-  aspect-ratio: 16 / 9;
+  height: var(--thumb-height);
   border-radius: var(--radius-lg);
-}
-
-.skeleton-meta {
-  display: flex;
-  gap: var(--space-3);
-}
-
-.skeleton-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.skeleton-line {
-  flex: 1;
-  height: 14px;
-  margin-top: 10px;
 }
 
 .empty {
@@ -213,6 +202,7 @@ onMounted(refresh);
   background: var(--bg-elev);
   border: 1px dashed var(--border);
   border-radius: var(--radius-xl);
+  width: 100%;
 }
 
 .empty h3 {

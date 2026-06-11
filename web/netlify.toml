@@ -1,0 +1,26 @@
+# Netlify config for the Kwitch frontend.
+# Set VITE_SDK_APP_ID, VITE_USERSIG_MODE=server and VITE_USERSIG_SERVER_URL
+# in Site settings → Environment variables.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback so deep links like /watch/:id survive a refresh.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(self), microphone=(self), geolocation=()"

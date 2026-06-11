@@ -1,0 +1,44 @@
+# =============================================================================
+# Kwitch — full production-like stack with one command:
+#
+#   1. cp .env.example .env          # fill in SDK_APP_ID + SDK_SECRET_KEY
+#   2. docker compose up --build
+#   3. open http://localhost:8080
+#
+# The frontend is built in "server" UserSig mode (the secure path) and talks
+# to the usersig service. The SDKSecretKey never leaves the server container.
+#
+# NOTE: browsers only expose camera/mic on secure contexts. localhost counts,
+# so this works locally over plain HTTP. For real deployments put both
+# services behind HTTPS (load balancer / reverse proxy / CDN).
+# =============================================================================
+
+services:
+  usersig:
+    build: ./server
+    environment:
+      SDK_APP_ID: ${SDK_APP_ID:?Set SDK_APP_ID in .env}
+      SDK_SECRET_KEY: ${SDK_SECRET_KEY:?Set SDK_SECRET_KEY in .env}
+      PORT: 3001
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      USERSIG_EXPIRE_SECONDS: ${USERSIG_EXPIRE_SECONDS:-3600}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-60}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - '3001:3001'
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_SDK_APP_ID: ${SDK_APP_ID:?Set SDK_APP_ID in .env}
+        VITE_USERSIG_MODE: server
+        # The URL the *browser* uses to reach the usersig service.
+        VITE_USERSIG_SERVER_URL: ${VITE_USERSIG_SERVER_URL:-http://localhost:3001}
+    ports:
+      - '8080:8080'
+    depends_on:
+      - usersig
+    restart: unless-stopped

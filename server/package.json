@@ -1,7 +1,7 @@
 {
-  "name": "trtc-twitch-clone-server",
-  "version": "1.0.0",
-  "description": "Minimal Node + Express service that issues TRTC UserSig credentials server-side (the secure, production path).",
+  "name": "kwitch-usersig-server",
+  "version": "2.0.0",
+  "description": "Hardened Node + Express service that issues TRTC UserSig credentials server-side (the secure, production path).",
   "type": "module",
   "engines": {
     "node": ">=20.19.0"
@@ -9,20 +9,30 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^7.2.0",
+    "helmet": "^8.1.0",
+    "pino": "^10.1.0",
+    "pino-http": "^11.0.0",
     "tls-sig-api-v2": "^1.0.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.12.0",
+    "@types/supertest": "^6.0.3",
+    "pino-pretty": "^13.1.2",
+    "supertest": "^7.1.4",
     "tsx": "^4.7.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^4.0.18"
   }
 }

@@ -2,13 +2,18 @@
  * Preflight environment check.
  *
  * Runs automatically before `npm run dev` and `npm run build` (see the
- * "predev" / "prebuild" scripts in package.json). Its only job is to fail
- * LOUDLY and CLEARLY if your TRTC credentials are missing or still set to the
- * placeholder values shipped in .env.example — so a newcomer never wastes time
- * debugging a blank screen that was really just an empty SDKAppID.
+ * "predev" / "prebuild" scripts in package.json). Its job is to fail LOUDLY
+ * and CLEARLY if your TRTC credentials are missing or still set to the
+ * placeholder values shipped in .env.example — so a newcomer never wastes
+ * time debugging a blank screen that was really just an empty SDKAppID.
  *
- * It is intentionally dependency-free and reads .env.local the same way Vite
- * does (without the full dotenv stack) to stay fast and transparent.
+ * Configuration sources (matching how Vite itself resolves env):
+ *   1. process.env            — how CI systems and cloud build platforms
+ *                               (Vercel, Netlify, Render, Docker build args…)
+ *                               inject configuration. Takes precedence.
+ *   2. web/.env.local         — the local-development path.
+ *
+ * It is intentionally dependency-free to stay fast and transparent.
  */
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -27,24 +32,42 @@ function fail(message) {
   console.error(`\n${RED}${BOLD}✖ Preflight check failed${RESET}\n`);
   console.error(`${RED}${message}${RESET}\n`);
   console.error(
-    `${YELLOW}Fix: copy .env.example to web/.env.local and fill in your TRTC` +
-      ` credentials.\nGet them from the TRTC Console: https://console.trtc.io/app${RESET}\n`,
+    `${YELLOW}Fix (local dev): copy .env.example to web/.env.local and fill in your TRTC` +
+      ` credentials.\nFix (CI / cloud builds): set VITE_SDK_APP_ID and friends as environment` +
+      ` variables.\nGet credentials from the TRTC Console: https://console.trtc.io/app${RESET}\n`,
   );
   process.exit(1);
 }
 
-if (!existsSync(envPath)) {
-  fail('No web/.env.local file found. The app needs your TRTC SDKAppID to run.');
+// 1. Start from .env.local if it exists (KEY=VALUE lines, blanks/comments ignored).
+const env = {};
+if (existsSync(envPath)) {
+  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq === -1) continue;
+    env[trimmed.slice(0, eq).trim()] = trimmed.slice(eq + 1).trim();
+  }
 }
 
-// Minimal .env parser: KEY=VALUE per line, ignoring blanks and comments.
-const env = {};
-for (const line of readFileSync(envPath, 'utf8').split('\n')) {
-  const trimmed = line.trim();
-  if (!trimmed || trimmed.startsWith('#')) continue;
-  const eq = trimmed.indexOf('=');
-  if (eq === -1) continue;
-  env[trimmed.slice(0, eq).trim()] = trimmed.slice(eq + 1).trim();
+// 2. Real environment variables override the file — same precedence as Vite.
+for (const key of [
+  'VITE_SDK_APP_ID',
+  'VITE_USERSIG_MODE',
+  'VITE_SDK_SECRET_KEY',
+  'VITE_USERSIG_SERVER_URL',
+]) {
+  if (process.env[key] !== undefined && process.env[key] !== '') {
+    env[key] = process.env[key];
+  }
+}
+
+if (Object.keys(env).length === 0) {
+  fail(
+    'No configuration found. Neither web/.env.local exists nor are VITE_* ' +
+      'environment variables set.',
+  );
 }
 
 const appId = env.VITE_SDK_APP_ID;
@@ -67,7 +90,9 @@ if (mode === 'local') {
   }
 } else if (mode === 'server') {
   if (!env.VITE_USERSIG_SERVER_URL) {
-    fail('VITE_USERSIG_MODE=server requires VITE_USERSIG_SERVER_URL pointing at your UserSig server.');
+    fail(
+      'VITE_USERSIG_MODE=server requires VITE_USERSIG_SERVER_URL pointing at your UserSig server.',
+    );
   }
 } else {
   fail(`VITE_USERSIG_MODE must be "local" or "server", got "${mode}".`);
@@ -77,4 +102,6 @@ const note =
   mode === 'local'
     ? `${YELLOW}(dev-only client-side signing — never ship this to production)${RESET}`
     : `${GREEN}(server-signed — production-safe)${RESET}`;
-console.log(`${GREEN}✔ Preflight OK${RESET} — SDKAppID set, UserSig mode = ${BOLD}${mode}${RESET} ${note}`);
+console.log(
+  `${GREEN}✔ Preflight OK${RESET} — SDKAppID set, UserSig mode = ${BOLD}${mode}${RESET} ${note}`,
+);

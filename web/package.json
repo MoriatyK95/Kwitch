@@ -1,9 +1,9 @@
 {
-  "name": "trtc-twitch-clone-web",
+  "name": "kwitch-web",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
-  "description": "Vue 3 frontend for a Twitch/Kick-style live-streaming demo built on the TRTC AtomicXCore Web SDK.",
+  "description": "Kwitch — Vue 3 frontend for a live-streaming platform built on the TRTC AtomicXCore Web SDK.",
   "engines": {
     "node": ">=20.19.0"
   },
@@ -13,7 +13,8 @@
     "prebuild": "node scripts/preflight.mjs",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext .vue,.ts,.tsx --fix",
+    "lint": "eslint . --ext .vue,.ts,.tsx",
+    "lint:fix": "eslint . --ext .vue,.ts,.tsx --fix",
     "format": "prettier --write \"src/**/*.{vue,ts,css}\"",
     "typecheck": "vue-tsc --noEmit"
   },

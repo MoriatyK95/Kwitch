@@ -107,13 +107,17 @@ function navigate(path: string) {
 }
 
 .cat-item.active {
-  background: var(--bg-elev-2);
-  color: var(--text);
+  background: var(--brand-soft);
+  color: var(--brand);
   font-weight: 600;
 }
 
 .cat-item.accent .cat-label {
-  color: var(--kick);
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 600;
 }
 
 .cat-emoji {
@@ -162,7 +166,7 @@ function navigate(path: string) {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--brand-gradient);
   color: #fff;
   display: grid;
   place-items: center;

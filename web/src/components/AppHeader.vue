@@ -53,7 +53,7 @@ function avatarInitial(): string {
     </div>
 
     <div class="actions">
-      <button class="kick go-live" @click="navigate('/go-live')">Go Live</button>
+      <button class="brand go-live" @click="navigate('/go-live')">Go Live</button>
       <span class="user-label">{{ session.userName }}</span>
       <span class="avatar" :title="session.userName">{{ avatarInitial() }}</span>
     </div>
@@ -92,11 +92,12 @@ function avatarInitial(): string {
 }
 
 .top-nav-item {
+  position: relative;
   background: transparent;
   color: var(--text-dim);
-  font-weight: 400;
+  font-weight: 500;
   font-size: var(--font-base);
-  padding: 0;
+  padding: 0 0 2px;
   border-radius: 0;
 }
 
@@ -106,8 +107,19 @@ function avatarInitial(): string {
 }
 
 .top-nav-item.active {
-  color: var(--accent);
+  color: var(--brand);
   font-weight: 600;
+}
+
+.top-nav-item.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--brand-gradient);
 }
 
 .search {
@@ -149,10 +161,10 @@ function avatarInitial(): string {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--brand-gradient);
   display: grid;
   place-items: center;
-  font-weight: 600;
+  font-weight: 700;
   font-size: var(--font-sm);
   color: #fff;
   flex-shrink: 0;

@@ -72,7 +72,7 @@ onMounted(refresh);
       <div v-else-if="liveList.length === 0" class="empty">
         <h3>No one is live right now</h3>
         <p>Be the first to go live on Kwitch.</p>
-        <button class="kick" @click="router.push('/go-live')">Go Live</button>
+        <button class="brand" @click="router.push('/go-live')">Go Live</button>
       </div>
 
       <div v-else class="grid">
@@ -102,12 +102,16 @@ onMounted(refresh);
   border-radius: var(--radius-xl);
   overflow: hidden;
   background: var(--hero-bg);
+  border: 1px solid var(--border-strong);
 }
 
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: var(--accent-soft);
+  background:
+    radial-gradient(ellipse 60% 80% at 15% 20%, rgba(56, 225, 255, 0.18), transparent 60%),
+    radial-gradient(ellipse 50% 70% at 85% 80%, rgba(124, 108, 255, 0.22), transparent 60%),
+    radial-gradient(ellipse 30% 40% at 60% 10%, rgba(255, 61, 110, 0.08), transparent 60%);
   border-radius: var(--radius-xl);
 }
 
@@ -170,7 +174,7 @@ onMounted(refresh);
 
 .see-all {
   background: transparent;
-  color: var(--accent);
+  color: var(--brand);
   font-weight: 500;
   font-size: var(--font-base);
   padding: 0;

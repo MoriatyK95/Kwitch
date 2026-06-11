@@ -178,7 +178,7 @@ function backToBrowse() {
   width: 40px;
   height: 40px;
   border: 3px solid var(--border);
-  border-top-color: var(--accent);
+  border-top-color: var(--brand);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -239,7 +239,7 @@ function backToBrowse() {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--brand-gradient);
   display: grid;
   place-items: center;
   font-weight: 700;
@@ -280,13 +280,13 @@ function backToBrowse() {
 .subscribe-btn {
   padding: 10px 20px;
   background: transparent;
-  border: 1px solid var(--accent);
-  color: var(--accent);
+  border: 1px solid var(--brand);
+  color: var(--brand);
   font-weight: 500;
 }
 
 .subscribe-btn:hover {
-  background: var(--accent-soft);
+  background: var(--brand-soft);
 }
 
 .gift-btn {

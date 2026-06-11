@@ -56,8 +56,8 @@ async function enter() {
             placeholder="Choose your username"
             @keyup.enter="enter"
           />
-          <button class="kick enter-btn" :disabled="loggingIn" @click="enter">
-            {{ loggingIn ? 'Connecting…' : 'Log In' }}
+          <button class="brand enter-btn" :disabled="loggingIn" @click="enter">
+            {{ loggingIn ? 'Connecting…' : 'Start watching' }}
           </button>
           <p v-if="error" class="error">{{ error }}</p>
         </div>
@@ -101,15 +101,17 @@ async function enter() {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 70% 50% at 30% 40%, rgba(145, 70, 255, 0.2), transparent 60%),
-    radial-gradient(ellipse 50% 40% at 70% 60%, rgba(83, 252, 24, 0.08), transparent 50%),
+    radial-gradient(ellipse 70% 55% at 25% 35%, rgba(56, 225, 255, 0.14), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 75% 65%, rgba(124, 108, 255, 0.16), transparent 55%),
+    radial-gradient(ellipse 40% 30% at 50% 100%, rgba(255, 61, 110, 0.06), transparent 60%),
     var(--bg);
 }
 
 .login-card {
   position: relative;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
+  background: rgba(13, 17, 26, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-xl);
   padding: var(--space-8);
   width: min(400px, calc(100vw - 32px));
@@ -118,6 +120,7 @@ async function enter() {
   align-items: center;
   gap: var(--space-4);
   text-align: center;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
 }
 
 .login-card h1 {

@@ -8,9 +8,9 @@
  * time debugging a blank screen that was really just an empty SDKAppID.
  *
  * Configuration sources (matching how Vite itself resolves env):
- *   1. process.env            — how CI systems and cloud build platforms
- *                               (Vercel, Netlify, Render, Docker build args…)
- *                               inject configuration. Takes precedence.
+ *   1. process.env            — how CI systems and cloud builds (Docker
+ *                               build args, platform env vars…) inject
+ *                               configuration. Takes precedence.
  *   2. web/.env.local         — the local-development path.
  *
  * It is intentionally dependency-free to stay fast and transparent.
@@ -90,8 +90,10 @@ if (mode === 'local') {
   }
 } else if (mode === 'server') {
   if (!env.VITE_USERSIG_SERVER_URL) {
-    fail(
-      'VITE_USERSIG_MODE=server requires VITE_USERSIG_SERVER_URL pointing at your UserSig server.',
+    console.log(
+      `${YELLOW}ℹ VITE_USERSIG_SERVER_URL is empty — using same-origin mode: the app will` +
+        ` POST to /usersig on its own origin.\n  Works out of the box with the Docker stack` +
+        ` (nginx proxies /usersig) and with the Vite dev server (dev proxy).${RESET}`,
     );
   }
 } else {

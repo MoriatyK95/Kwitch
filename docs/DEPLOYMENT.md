@@ -1,43 +1,53 @@
 # Deployment
 
-A production deployment has **two pieces**:
+Kwitch deploys as **one stack with one public origin**:
 
-1. **Frontend** — the static Vite build (served over HTTPS, with an SPA
-   fallback so deep links like `/watch/:id` survive a refresh).
-2. **UserSig server** — the small Node service that signs UserSigs with your
-   secret key.
+```
+                        ┌────────────────────────────────────────────┐
+Browser ── HTTPS ──────▶│  web (nginx)                               │
+                        │   • serves the Vite bundle (SPA fallback)  │
+                        │   • proxies POST /usersig ───────────────┐ │
+                        │                                          ▼ │
+                        │  usersig (Node, internal only)             │
+                        │   • signs UserSigs with the secret key     │
+                        └────────────────────────────────────────────┘
+```
 
-This repo ships ready-made configs for every common path:
+Because the browser only ever talks to one origin, there is **no CORS setup,
+no URL cross-wiring, and no second public hostname**. The UserSig service is
+never exposed to the internet, and the SDKSecretKey never leaves it.
 
-| Path | Files | Best for |
+There are exactly **two supported deploy paths** — pick one:
+
+| Path | Vendors involved | Best for |
 |---|---|---|
-| **Docker Compose** | `docker-compose.yml`, `web/Dockerfile`, `server/Dockerfile` | One-command prod-like stack, any VPS/VM |
-| **Render Blueprint** | `render.yaml` | One-click deploy of both services |
-| **Vercel** | `web/vercel.json` | Frontend |
-| **Netlify** | `web/netlify.toml` | Frontend |
-| **Fly.io** | `server/fly.toml` | UserSig server |
-| **Any container platform** | the two Dockerfiles | ECS, Cloud Run, Kubernetes, … |
+| **1. Docker Compose** (recommended) | none — any Docker host | A VPS/VM you already have; full control |
+| **2. Render Blueprint** (optional) | one — Render | Managed hosting, zero server admin |
 
 CI (`.github/workflows/ci.yml`) lints, typechecks, tests, builds, and
-docker-builds both pieces on every push/PR.
+docker-builds everything on every push/PR — it runs on GitHub, which already
+hosts the repo, so it adds no extra vendor.
 
 ---
 
-## 0. Prerequisites & the golden rules
+## 0. The golden rules
 
 - **HTTPS is mandatory for the frontend.** Browsers only allow camera/mic
-  (`getUserMedia`) on a *secure context*. All hosted platforms below give you
-  HTTPS automatically; for raw containers put a TLS-terminating proxy or CDN
-  in front.
+  (`getUserMedia`) on a *secure context*. `localhost` counts, so local runs
+  work over plain HTTP; for a real deployment put TLS in front (Caddy,
+  Traefik, a load balancer, or your CDN). Render does this automatically.
 - **The secret key lives only on the server.** It is set as an environment
   variable / platform secret — never in the repo, never in the frontend build.
 - **Set `VITE_USERSIG_MODE=server`** for the production frontend build, and
-  leave `VITE_SDK_SECRET_KEY` blank. (The web Dockerfile deliberately has no
-  build-arg for the secret key, so this mistake is impossible on that path.)
+  leave `VITE_SDK_SECRET_KEY` blank. (The web Docker image deliberately has no
+  build-arg for the secret key, so this mistake is impossible.)
 
 ---
 
-## 1. Quickest full stack: Docker Compose
+## 1. Docker Compose — the recommended path
+
+Runs unchanged on any Docker host: a $5 VPS, EC2, Compute Engine, a homelab
+box, or your laptop.
 
 ```bash
 cp .env.example .env        # fill in SDK_APP_ID and SDK_SECRET_KEY
@@ -47,21 +57,36 @@ docker compose up --build
 
 What you get:
 
-- `web` — the Vite bundle built in **server mode** and served by hardened
-  nginx (SPA fallback, gzip, immutable asset caching, security headers,
-  `/healthz`) on port `8080`, running unprivileged.
-- `usersig` — the signing API on port `3001`, non-root, with a Docker
-  `HEALTHCHECK`, helmet, rate limiting, structured logs, and graceful
-  shutdown.
+- `web` — the Vite bundle built in **server mode**, served by hardened,
+  unprivileged nginx (SPA fallback, gzip, immutable asset caching, security
+  headers, `/healthz`) on port `8080`. nginx also **reverse-proxies
+  `/usersig`** to the internal API, so the whole app lives on one origin.
+- `usersig` — the signing API, **not published publicly** (only reachable
+  from the web container), non-root, with a Docker `HEALTHCHECK`, helmet,
+  rate limiting, structured logs, and graceful shutdown.
 
-For a real server, set `VITE_USERSIG_SERVER_URL` and `CORS_ORIGIN` in `.env`
-to your public URLs and put both services behind HTTPS.
+To go to production on a VM:
+
+1. Copy the repo (or just `docker-compose.yml` + prebuilt images) to the box.
+2. Set `.env` with your real credentials and, if you serve on a domain,
+   `CORS_ORIGIN=https://your-domain.example`.
+3. Put HTTPS in front of port 8080 — e.g. a 10-line Caddyfile:
+
+   ```
+   your-domain.example {
+       reverse_proxy localhost:8080
+   }
+   ```
+
+That's the entire deployment. One box, one vendor (or zero, if the box is
+yours).
 
 ---
 
-## 2. One-click: Render Blueprint
+## 2. Render Blueprint — the optional managed path
 
-`render.yaml` defines both services:
+If you'd rather not run a VM, `render.yaml` deploys both pieces to a single
+managed vendor in one click:
 
 1. Push the repo to GitHub → Render Dashboard → **New → Blueprint** → pick the
    repo.
@@ -73,13 +98,15 @@ to your public URLs and put both services behind HTTPS.
    **kwitch-web** URL. Redeploy.
 4. Verify: `curl https://<usersig-url>/healthz` → `{"ok":true,…}`.
 
+> Render hosts the frontend and API on two subdomains, so this path — unlike
+> the Docker path — does need the one-time URL/CORS cross-wiring and sets
+> `VITE_USERSIG_SERVER_URL` to a full URL.
+
 ---
 
-## 3. Mix and match platforms
+## 3. Configuration reference
 
 ### UserSig server
-
-Any Node host or container platform works. The server respects:
 
 | Env var | Default | Purpose |
 |---|---|---|
@@ -89,26 +116,14 @@ Any Node host or container platform works. The server respects:
 | `CORS_ORIGIN` | `http://localhost:5173` | Comma-separated allowed frontend origins |
 | `USERSIG_EXPIRE_SECONDS` | `3600` | Sig TTL |
 | `RATE_LIMIT_PER_MINUTE` | `60` | `/usersig` requests per IP per minute |
-| `TRUST_PROXY` | `false` | Set `true` behind a load balancer / reverse proxy |
+| `TRUST_PROXY` | `false` | Set `true` behind a reverse proxy (compose sets it) |
 | `LOG_LEVEL` | `info` | pino log level |
 | `NODE_ENV` | `development` | `production` switches to JSON logs |
 
 Probes: `GET /healthz` (liveness, `/health` kept as an alias) and
 `GET /readyz` (readiness).
 
-- **Render (manual):** root `server`, build `npm ci && npm run build`, start
-  `npm start`, health check path `/healthz`, set the env vars, `TRUST_PROXY=true`.
-- **Fly.io:** `cd server && fly launch --copy-config --no-deploy`, then
-  `fly secrets set SDK_APP_ID=… SDK_SECRET_KEY=… CORS_ORIGIN=…` and `fly deploy`
-  (uses `server/fly.toml` + `server/Dockerfile`).
-- **Anything that runs containers:** `docker build -t kwitch-server ./server`.
-
-> **CORS:** the server only accepts requests from the origins in `CORS_ORIGIN`
-> (comma-separated). If your frontend can't reach `/usersig`, this is almost
-> always the cause — the value must exactly match the deployed frontend origin
-> (scheme + host, no trailing slash).
-
-### Frontend
+### Frontend build
 
 The build reads `VITE_*` from real environment variables **or**
 `web/.env.local` (env vars win), so CI/cloud builds need no `.env` file:
@@ -117,60 +132,46 @@ The build reads `VITE_*` from real environment variables **or**
 |---|---|
 | `VITE_SDK_APP_ID` | your SDKAppID |
 | `VITE_USERSIG_MODE` | `server` |
-| `VITE_USERSIG_SERVER_URL` | your UserSig server URL |
+| `VITE_USERSIG_SERVER_URL` | **empty** (same-origin, default) — set a full URL only for split deployments like Render |
 | `VITE_SDK_SECRET_KEY` | *(leave empty)* |
 
-- **Vercel:** import repo, root `web` — `web/vercel.json` already configures
-  the framework, SPA rewrites, and cache/security headers. Set the env vars.
-- **Netlify:** base `web` — `web/netlify.toml` does the same. Set the env vars.
-- **Cloudflare Pages:** root `web`, build `npm run build`, output `dist`, set
-  the env vars, and add a SPA fallback (Pages serves `index.html` for unknown
-  routes by default for SPAs).
-- **Containers:** `docker build` with build args — see the header comment in
-  `web/Dockerfile`. nginx listens on `8080` and exposes `/healthz`.
+### Web container
 
----
+| Env var | Default | Purpose |
+|---|---|---|
+| `USERSIG_UPSTREAM` | `http://127.0.0.1:3001/usersig` | Where nginx forwards `/usersig` (compose sets `http://usersig:3001/usersig`) |
 
-## 4. Wire them together
+### Local development
 
-The frontend's `VITE_USERSIG_SERVER_URL` must point at the deployed server, and
-the server's `CORS_ORIGIN` must include the deployed frontend origin.
-
-```
-Frontend (HTTPS)
-   VITE_USERSIG_MODE=server
-   VITE_USERSIG_SERVER_URL=https://usersig.example.com
-            │  POST /usersig { userId }
-            ▼
-UserSig server (HTTPS)
-   SDK_SECRET_KEY=••••  (server-only)
-   CORS_ORIGIN=https://app.example.com
-```
+`npm run dev` (Vite) proxies `/usersig` to `http://localhost:3001`, mirroring
+the production nginx proxy — so `VITE_USERSIG_MODE=server` with an empty
+server URL works identically in dev (`npm run dev:server` in another
+terminal) and prod.
 
 ### WebRTC / secure-context notes
 
-- Camera/mic require HTTPS — guaranteed by all hosted platforms above.
+- Camera/mic require HTTPS in production (see golden rules above).
 - TRTC uses WebRTC for media; the SDK negotiates UDP/TCP and falls back through
   Tencent's TURN relays, so you generally don't open custom ports. On locked-down
   corporate networks, ensure outbound UDP and `443` are permitted.
 
 ---
 
-## 5. Production hardening checklist
+## 4. Production hardening checklist
 
 Already done in this repo:
 
+- [x] **Single public origin** — the UserSig API is not internet-exposed in
+      the Docker stack; no CORS surface.
 - [x] **Rate limiting** on `/usersig` (configurable via `RATE_LIMIT_PER_MINUTE`).
 - [x] **Input validation** — `userId` restricted to a safe charset and length;
       request bodies capped at 4 KB.
-- [x] **Security headers** — helmet on the API; nginx/Vercel/Netlify headers on
-      the frontend.
+- [x] **Security headers** — helmet on the API; nginx headers on the frontend.
 - [x] **Structured JSON logging** (pino) with health-probe noise filtered out.
 - [x] **Graceful shutdown** on SIGTERM/SIGINT for clean rolling deploys.
 - [x] **Liveness/readiness probes** on both services.
 - [x] **Non-root containers** with Docker `HEALTHCHECK`s.
-- [x] **No secret in the client bundle** in server mode; CORS locked to your
-      origins; secrets never logged.
+- [x] **No secret in the client bundle** in server mode; secrets never logged.
 
 Still on you (application-level decisions this demo can't make for you):
 
@@ -186,10 +187,10 @@ Still on you (application-level decisions this demo can't make for you):
 
 ---
 
-## 6. The deploy/build scripts
+## 5. The deploy/build scripts
 
 **Frontend (`web/package.json`):**
-- `npm run dev` — preflight check + Vite dev server.
+- `npm run dev` — preflight check + Vite dev server (with `/usersig` proxy).
 - `npm run build` — preflight + typecheck + Vite production build → `web/dist`.
 - `npm run preview` — serve the production build locally to sanity-check it.
 - `npm run lint` / `lint:fix` / `typecheck` — what CI runs.

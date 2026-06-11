@@ -1,9 +1,16 @@
-# nginx config for serving the Kwitch SPA in production.
+# nginx config for serving the Kwitch SPA in production — and acting as the
+# single public entrypoint for the whole stack:
 #  - SPA fallback so /watch/:id deep links survive a refresh
+#  - /usersig is reverse-proxied to the UserSig API (same origin for the
+#    browser → no CORS setup, no second public hostname, one vendor)
 #  - long-lived immutable caching for hashed assets
 #  - gzip for text assets
 #  - sane security headers (HTTPS/HSTS is expected to terminate upstream at
 #    your load balancer or CDN)
+#
+# This file is an nginx *template*: ${USERSIG_UPSTREAM} is substituted from
+# the environment at container start (see the web Dockerfile). nginx's own
+# runtime variables like $uri are left untouched.
 
 server {
     listen 8080;
@@ -25,6 +32,16 @@ server {
         access_log off;
         default_type application/json;
         return 200 '{"ok":true}';
+    }
+
+    # Same-origin proxy to the UserSig API. The browser calls POST /usersig on
+    # this origin; nginx forwards it to the internal usersig service.
+    location = /usersig {
+        proxy_pass ${USERSIG_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     # Hashed build assets never change — cache forever.

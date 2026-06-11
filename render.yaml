@@ -1,6 +1,9 @@
 # =============================================================================
-# Render Blueprint — deploy the whole Kwitch stack in one click.
-# https://render.com/docs/blueprint-spec
+# Render Blueprint — OPTIONAL managed-hosting alternative to the Docker stack.
+# One vendor, one click, both services. https://render.com/docs/blueprint-spec
+#
+# (If you'd rather not add any platform vendor at all, skip this file and run
+# `docker compose up` on any VM — see docs/DEPLOYMENT.md.)
 #
 #   1. Push this repo to GitHub and create a new Blueprint on Render.
 #   2. Fill in the prompted env vars (SDK_APP_ID, SDK_SECRET_KEY).

@@ -16,7 +16,12 @@ export interface TrtcConfig {
   userSigMode: UserSigMode;
   /** DEV-ONLY secret key, present only in `local` mode. */
   sdkSecretKey: string;
-  /** Base URL of the UserSig backend, used only in `server` mode. */
+  /**
+   * Base URL of the UserSig backend, used only in `server` mode.
+   * Empty string = same-origin: the app POSTs to `/usersig` on its own
+   * origin and a reverse proxy (nginx in production, Vite's dev proxy in
+   * development) forwards it to the UserSig server.
+   */
   userSigServerUrl: string;
 }
 

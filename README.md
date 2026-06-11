@@ -15,9 +15,11 @@ live-streaming product works — but the operational pieces are real:
 - **UserSig server**: Node + Express with helmet, input validation, rate
   limiting, structured pino logs, liveness/readiness probes, graceful
   shutdown, and integration tests.
-- **Cloud-ready**: `docker-compose.yml`, `render.yaml` (one-click blueprint),
-  `web/vercel.json`, `web/netlify.toml`, `server/fly.toml`, and a GitHub
-  Actions CI pipeline.
+- **Cloud-ready, without vendor sprawl**: one vendor-neutral Docker Compose
+  stack that runs on any host behind a single public origin (nginx serves the
+  app and proxies the UserSig API — no CORS, no second hostname), plus one
+  optional managed alternative (`render.yaml`) and a GitHub Actions CI
+  pipeline.
 
 ---
 
@@ -60,10 +62,13 @@ docker compose up --build
 # open http://localhost:8080
 ```
 
-This builds the frontend in the **secure, server-signed mode** and runs the
-UserSig API next to it — the same topology you deploy to the cloud. See
-**[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for Render/Vercel/Netlify/Fly
-paths.
+This builds the frontend in the **secure, server-signed mode** and serves
+everything from a single origin — nginx hosts the app and reverse-proxies
+`/usersig` to the internal API, so there's no CORS setup and the signing
+service is never exposed publicly. The same stack runs unchanged on any
+Docker host (VPS, EC2, Compute Engine). See
+**[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**, which also covers the one
+optional managed-hosting alternative (Render).
 
 ---
 
@@ -137,7 +142,9 @@ iOS/Android Core SDK track without implementing it now.
 
 | Concern | What's in place |
 |---|---|
+| Vendor surface | One Docker stack, one public origin; the only hard dependency is TRTC itself |
 | Secrets | Server-signed UserSigs; web Docker image *cannot* embed the secret key |
+| Network exposure | UserSig API is internal-only behind the nginx proxy — no CORS surface |
 | API hardening | helmet, strict `userId` validation, 4 KB body cap, rate limiting, JSON 404/500 |
 | Observability | Structured pino logs (JSON in prod), `/healthz` + `/readyz` probes |
 | Lifecycle | Graceful SIGTERM/SIGINT shutdown with a 10s drain timeout |
@@ -161,19 +168,17 @@ checklist in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) covers these.
 ├── README.md                   # you are here
 ├── .env.example                # documented template for every env var
 ├── .nvmrc                      # pins the Node version
-├── docker-compose.yml          # full stack: web (nginx) + usersig API
-├── render.yaml                 # one-click Render blueprint (both services)
+├── docker-compose.yml          # the deploy unit: web (nginx) + internal usersig API
+├── render.yaml                 # OPTIONAL one-vendor managed alternative (Render)
 ├── .github/workflows/ci.yml    # lint + typecheck + test + build + docker
 ├── docs/
 │   ├── ARCHITECTURE.md         # how LiveView / StreamMixer / state modules fit
 │   ├── LOCAL_VS_PRODUCTION.md  # the two UserSig modes + the security tradeoff
-│   ├── DEPLOYMENT.md           # every deploy path, hardening checklist
+│   ├── DEPLOYMENT.md           # the two deploy paths + hardening checklist
 │   └── FEATURES.md             # each feature ↔ the TRTC API that powers it
 ├── web/                        # Vue 3 + Vite + TS frontend
 │   ├── Dockerfile              # multi-stage build → unprivileged nginx
-│   ├── nginx.conf              # SPA fallback, caching, security headers
-│   ├── vercel.json             # Vercel rewrites + headers
-│   ├── netlify.toml            # Netlify redirects + headers
+│   ├── nginx.conf.template     # SPA fallback, caching, headers, /usersig proxy
 │   ├── scripts/preflight.mjs   # env check (reads env vars OR .env.local)
 │   └── src/
 │       ├── pages/              # Browse, GoLive, Watch, PkBattle, NotFound
@@ -182,7 +187,6 @@ checklist in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) covers these.
 │       └── trtc/               # ★ the single credential/login abstraction
 └── server/                     # Node + Express UserSig service (production path)
     ├── Dockerfile              # multi-stage, non-root, HEALTHCHECK
-    ├── fly.toml                # Fly.io config
     └── src/
         ├── config.ts           # validated env config
         ├── app.ts              # hardened express app (factory, testable)

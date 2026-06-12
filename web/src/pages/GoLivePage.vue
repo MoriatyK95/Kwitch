@@ -93,7 +93,9 @@ async function stopLive() {
       </header>
 
       <div class="video-wrap">
-        <StreamMixer />
+        <div class="mixer-host">
+          <StreamMixer />
+        </div>
         <span v-if="isLive" class="badge-live live-overlay">Live</span>
       </div>
 
@@ -194,7 +196,15 @@ async function stopLive() {
   overflow: hidden;
 }
 
-.video-wrap :deep(> *) {
+/* Only the SDK's mixer canvas should fill the stage. Sizing must NOT apply
+   to overlay siblings (like the Live badge), so the mixer gets its own host
+   layer and the 100% sizing is scoped inside it. */
+.mixer-host {
+  position: absolute;
+  inset: 0;
+}
+
+.mixer-host :deep(> *) {
   width: 100%;
   height: 100%;
 }

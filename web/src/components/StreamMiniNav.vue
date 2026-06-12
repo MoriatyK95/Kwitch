@@ -63,9 +63,13 @@ function goBack() {
 }
 
 .brand {
-  color: var(--accent);
+  font-family: var(--font-display);
   font-weight: 700;
   font-size: var(--font-lg);
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .brand:hover {

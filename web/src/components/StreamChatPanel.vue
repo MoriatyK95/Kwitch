@@ -248,13 +248,13 @@ function authorColor(userId: string): string {
   width: 36px;
   height: 36px;
   padding: 0;
-  background: var(--accent);
+  background: var(--brand-gradient);
   color: #fff;
   font-weight: 700;
 }
 
 .send-btn:hover:not(:disabled) {
-  background: var(--accent-hover);
+  filter: brightness(1.12);
 }
 
 .send-btn:disabled {

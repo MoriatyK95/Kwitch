@@ -49,13 +49,13 @@ function gift(giftId: string) {
 }
 
 .like-btn {
-  background: var(--accent);
+  background: var(--brand-gradient);
   color: #fff;
   font-weight: 700;
 }
 
 .like-btn:hover {
-  background: var(--accent-hover);
+  filter: brightness(1.12);
 }
 
 .like-total {
@@ -64,7 +64,7 @@ function gift(giftId: string) {
 }
 
 .like-total strong {
-  color: var(--kick);
+  color: var(--brand);
 }
 
 .gifts {
@@ -85,7 +85,7 @@ function gift(giftId: string) {
 }
 
 .gift-btn:hover {
-  border-color: var(--accent);
+  border-color: var(--brand);
 }
 
 .gift-btn img {

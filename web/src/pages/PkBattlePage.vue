@@ -140,7 +140,7 @@ onUnmounted(() => {
   height: 56px;
   padding: 0 var(--space-6);
   background: var(--pk-header-bg);
-  border-bottom: 2px solid var(--accent);
+  border-bottom: 2px solid var(--brand);
   flex-shrink: 0;
 }
 
@@ -148,9 +148,13 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  font-family: var(--font-display);
   font-weight: 700;
   font-size: 18px;
-  color: var(--kick);
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .swords {
@@ -194,7 +198,7 @@ onUnmounted(() => {
 }
 
 .score-red {
-  background: rgba(255, 68, 68, 0.8);
+  background: rgba(255, 61, 110, 0.8);
   display: flex;
   align-items: center;
   padding-left: var(--space-6);
@@ -203,7 +207,7 @@ onUnmounted(() => {
 
 .score-blue {
   flex: 1;
-  background: rgba(68, 136, 255, 0.8);
+  background: rgba(56, 182, 255, 0.8);
   display: flex;
   align-items: center;
   justify-content: flex-end;

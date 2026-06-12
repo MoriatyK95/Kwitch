@@ -34,7 +34,7 @@ function requestToJoin() {
         </div>
       </template>
       <template v-else>
-        <button class="kick" @click="requestToJoin">Request to join on camera</button>
+        <button class="brand" @click="requestToJoin">Request to join on camera</button>
         <button class="ghost" @click="cancelApplication()">Cancel request</button>
       </template>
       <div v-if="connected.length" class="connected">

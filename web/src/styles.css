@@ -1,51 +1,82 @@
+/* ===========================================================================
+   Kwitch "Aurora" design system
+   ---------------------------------------------------------------------------
+   A unique identity for Kwitch: deep midnight-blue surfaces, an electric
+   cyan → violet "aurora" brand gradient, and hot-pink live signals. Headings
+   use Space Grotesk; body copy uses Inter (loaded in index.html).
+   =========================================================================== */
+
 :root {
-  /* Kwitch Figma tokens */
-  --bg: #0e0e10;
-  --bg-elev: #18181b;
-  --bg-elev-2: #1f1f23;
-  --bg-hover: #2f2f35;
-  --border: #28282d;
-  --border-subtle: #28282d;
+  /* --- Surfaces ----------------------------------------------------------- */
+  --bg: #07090f;
+  --bg-elev: #0d111a;
+  --bg-elev-2: #131826;
+  --bg-elev-3: #1a2132;
+  --bg-hover: #1e2638;
+  --border: #1c2334;
+  --border-subtle: #161d2c;
+  --border-strong: #2b3550;
 
-  --text: #efeff1;
-  --text-dim: #adadb8;
-  --text-muted: #777780;
-  --text-on-kick: #0d0d0d;
+  /* --- Typography colors -------------------------------------------------- */
+  --text: #eef2f9;
+  --text-dim: #9aa7c0;
+  --text-muted: #5d6982;
+  --text-on-brand: #04121a;
 
-  --accent: #9146ff;
-  --accent-hover: #772ce8;
-  --accent-soft: rgba(145, 70, 255, 0.3);
-  --kick: #53fc18;
-  --kick-hover: #45d614;
+  /* --- Brand: electric cyan → violet aurora ------------------------------- */
+  --brand: #38e1ff;
+  --brand-hover: #6deaff;
+  --brand-deep: #0fa9cf;
+  --brand-2: #7c6cff;
+  --brand-2-hover: #9a8dff;
+  --brand-soft: rgba(56, 225, 255, 0.12);
+  --brand-2-soft: rgba(124, 108, 255, 0.16);
+  --brand-gradient: linear-gradient(135deg, #38e1ff 0%, #7c6cff 100%);
+  --brand-gradient-soft: linear-gradient(135deg, rgba(56, 225, 255, 0.16), rgba(124, 108, 255, 0.16));
+  --brand-glow: 0 0 24px rgba(56, 225, 255, 0.25);
 
-  --live: #ff4444;
-  --hero-bg: #261440;
-  --error: #ff6b6b;
+  /* --- Signals ------------------------------------------------------------ */
+  --live: #ff3d6e;
+  --live-soft: rgba(255, 61, 110, 0.14);
+  --error: #ff5c7a;
+  --success: #3ddc97;
+  --gold: #ffc857;
+  --gold-dark: #3a2e10;
+  --mod: #3ddc97;
 
+  /* --- Legacy aliases (kept so older snippets keep working) --------------- */
+  --accent: var(--brand-2);
+  --accent-hover: var(--brand-2-hover);
+  --accent-soft: var(--brand-2-soft);
+  --kick: var(--brand);
+  --kick-hover: var(--brand-hover);
+  --kick-soft: var(--brand-soft);
+
+  /* --- Video / PK surfaces ------------------------------------------------ */
+  --video-bg: #0a0e18;
+  --video-area-bg: #080b13;
+  --team-red: #ff3d6e;
+  --team-red-bg: #1c0d15;
+  --team-red-panel: #2a1220;
+  --team-blue: #38b6ff;
+  --team-blue-bg: #0a1422;
+  --team-blue-panel: #102036;
+  --pk-header-bg: #0d1322;
+  --hero-bg: #0c1322;
+
+  /* --- Layout ------------------------------------------------------------- */
   --sidebar-width: 240px;
-  --header-height: 56px;
+  --header-height: 60px;
   --chat-width: 360px;
-  --chat-border: #333339;
-
-  --gold: #ffd700;
-  --gold-dark: #40330d;
-  --mod: #00cc66;
-  --video-bg: #1f142e;
-  --video-area-bg: #140f1f;
-
-  --team-red: #ff4444;
-  --team-red-bg: #260f14;
-  --team-red-panel: #33141a;
-  --team-blue: #4488ff;
-  --team-blue-bg: #0f1426;
-  --team-blue-panel: #141a33;
-  --pk-header-bg: #1f0f2e;
+  --chat-border: var(--border);
   --card-width: 276px;
   --thumb-height: 155px;
-  --radius: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
 
+  /* --- Spacing & type scale ------------------------------------------------ */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -61,7 +92,12 @@
   --font-xl: 20px;
   --font-2xl: 28px;
 
-  --transition: 0.15s ease;
+  --font-display: 'Space Grotesk', 'Inter', sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  --transition: 0.16s ease;
+
+  color-scheme: dark;
 }
 
 * {
@@ -78,10 +114,18 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-body);
   font-size: var(--font-base);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
 }
 
 a {
@@ -89,51 +133,84 @@ a {
   text-decoration: none;
 }
 
+/* --- Buttons --------------------------------------------------------------- */
+
 button {
   font-family: inherit;
   cursor: pointer;
   border: none;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius);
   padding: 8px 14px;
   font-weight: 600;
   font-size: var(--font-sm);
   background: var(--bg-elev-2);
   color: var(--text);
-  transition: background var(--transition), color var(--transition);
+  transition:
+    background var(--transition),
+    color var(--transition),
+    border-color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition);
 }
 
 button:hover:not(:disabled) {
   background: var(--bg-hover);
 }
 
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Primary action — the aurora gradient. */
 button.primary {
-  background: var(--accent);
+  background: var(--brand-gradient);
   color: #fff;
+  border: none;
 }
 
 button.primary:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--brand-gradient);
+  filter: brightness(1.12);
+  box-shadow: var(--brand-glow);
 }
 
+/* High-energy CTA — solid electric cyan (replaces the old "kick" button). */
+button.brand,
 button.kick {
-  background: var(--kick);
-  color: var(--text-on-kick);
-  font-weight: 600;
+  background: var(--brand);
+  color: var(--text-on-brand);
+  font-weight: 700;
   font-size: 13px;
 }
 
+button.brand:hover:not(:disabled),
 button.kick:hover:not(:disabled) {
-  background: var(--kick-hover);
+  background: var(--brand-hover);
+  box-shadow: var(--brand-glow);
 }
 
 button.ghost {
-  background: var(--bg-elev-2);
+  background: transparent;
   color: var(--text);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
 }
 
 button.ghost:hover:not(:disabled) {
   background: var(--bg-hover);
+  border-color: var(--brand);
+}
+
+button.danger {
+  background: var(--live);
+  color: #fff;
+  font-weight: 700;
+}
+
+button.danger:hover:not(:disabled) {
+  background: #e62e5d;
 }
 
 button:disabled {
@@ -141,15 +218,18 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* --- Inputs ----------------------------------------------------------------- */
+
 input,
 select {
   font-family: inherit;
   font-size: var(--font-base);
   background: var(--bg-elev-2);
   color: var(--text);
-  border: 1px solid transparent;
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   padding: 8px 12px;
+  transition: border-color var(--transition), box-shadow var(--transition);
 }
 
 input::placeholder {
@@ -159,8 +239,11 @@ input::placeholder {
 input:focus,
 select:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-soft);
 }
+
+/* --- App shell --------------------------------------------------------------- */
 
 .app-shell {
   display: flex;
@@ -188,12 +271,15 @@ select:focus {
   padding: 0;
 }
 
+/* --- Badges & signals ---------------------------------------------------------- */
+
 .live-dot {
   display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--live);
+  box-shadow: 0 0 8px rgba(255, 61, 110, 0.7);
   flex-shrink: 0;
 }
 
@@ -205,10 +291,11 @@ select:focus {
   color: #fff;
   font-size: var(--font-xs);
   font-weight: 700;
-  padding: 3px 6px;
-  border-radius: 4px;
+  padding: 3px 7px;
+  border-radius: var(--radius-pill);
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+  box-shadow: 0 2px 10px rgba(255, 61, 110, 0.4);
 }
 
 .badge-live::before {
@@ -217,32 +304,46 @@ select:focus {
   height: 6px;
   border-radius: 50%;
   background: #fff;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .badge-pk {
   display: inline-flex;
   align-items: center;
-  background: var(--kick);
-  color: var(--text-on-kick);
+  background: var(--brand-gradient);
+  color: #fff;
   font-size: var(--font-xs);
   font-weight: 700;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-pill);
   text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .badge-featured {
   display: inline-flex;
   align-items: center;
-  background: var(--kick);
-  color: var(--text-on-kick);
+  background: var(--brand);
+  color: var(--text-on-brand);
   font-size: 11px;
   font-weight: 700;
   padding: 4px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius-pill);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
 }
+
+/* --- Panels --------------------------------------------------------------------- */
 
 .panel {
   background: var(--bg-elev);
@@ -255,7 +356,10 @@ select:focus {
   border-bottom: 1px solid var(--border);
   font-weight: 700;
   font-size: var(--font-sm);
+  font-family: var(--font-display);
 }
+
+/* --- Skeletons -------------------------------------------------------------------- */
 
 @keyframes shimmer {
   0% {
@@ -267,20 +371,26 @@ select:focus {
 }
 
 .skeleton {
-  background: linear-gradient(90deg, var(--bg-elev-2) 25%, var(--bg-hover) 50%, var(--bg-elev-2) 75%);
+  background: linear-gradient(90deg, var(--bg-elev-2) 25%, var(--bg-elev-3) 50%, var(--bg-elev-2) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: var(--radius-lg);
 }
 
+/* --- Scrollbars --------------------------------------------------------------------- */
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-thumb {
+  background: var(--bg-elev-3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
   background: var(--bg-hover);
-  border-radius: 3px;
 }
 
 @media (max-width: 1024px) {

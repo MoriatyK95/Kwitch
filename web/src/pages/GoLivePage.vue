@@ -105,7 +105,7 @@ async function stopLive() {
             Stream title
             <input v-model="title" placeholder="What are you streaming today?" />
           </label>
-          <button class="kick start-btn" :disabled="busy" @click="goLive">
+          <button class="brand start-btn" :disabled="busy" @click="goLive">
             {{ busy ? 'Starting…' : 'Start broadcast' }}
           </button>
           <p class="hint">Room ID: <code>{{ liveId }}</code></p>
@@ -179,11 +179,11 @@ async function stopLive() {
   gap: var(--space-2);
   padding: 6px 14px;
   border: 1px solid var(--live);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: var(--font-xs);
   font-weight: 800;
   color: var(--live);
-  background: rgba(235, 4, 0, 0.1);
+  background: var(--live-soft);
 }
 
 .video-wrap {
@@ -263,7 +263,7 @@ async function stopLive() {
 }
 
 .end-btn:hover:not(:disabled) {
-  background: #c90300;
+  background: #e62e5d;
 }
 
 .error {

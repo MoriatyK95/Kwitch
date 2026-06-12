@@ -12,14 +12,14 @@ defineEmits<{
 }>();
 
 const thumbTints = [
-  '#33261a',
-  '#1a2640',
-  '#261a26',
-  '#331f14',
-  '#401a26',
-  '#1f1a33',
-  '#142e1f',
-  '#2e1f38',
+  '#10243a',
+  '#1a1d3d',
+  '#0f2e33',
+  '#251a3d',
+  '#132830',
+  '#1c2040',
+  '#0e2a3f',
+  '#221c44',
 ];
 
 function formatViewers(count: number): string {
@@ -72,6 +72,11 @@ function thumbBackground(): Record<string, string> {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  transition: transform var(--transition);
+}
+
+.card:hover {
+  transform: translateY(-3px);
 }
 
 .thumb {
@@ -81,6 +86,13 @@ function thumbBackground(): Record<string, string> {
   background-position: center;
   border-radius: var(--radius-lg);
   overflow: hidden;
+  border: 1px solid var(--border);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.card:hover .thumb {
+  border-color: var(--brand);
+  box-shadow: var(--brand-glow);
 }
 
 .thumb .badge-live {
@@ -117,11 +129,11 @@ function thumbBackground(): Record<string, string> {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--brand-gradient);
   color: #fff;
   display: grid;
   place-items: center;
-  font-weight: 600;
+  font-weight: 700;
   font-size: var(--font-sm);
   flex-shrink: 0;
 }

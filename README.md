@@ -1,18 +1,25 @@
-# 🎥 TRTC Live — a Twitch/Kick-style clone, built to learn from
+# 🎥 Kwitch — an open-source live-streaming platform
 
-A **public, open-source reference repository** that teaches you how to build a
-live-streaming platform in the style of Twitch / Kick on top of the
-[Tencent RTC (TRTC) Web Core SDK — "AtomicXCore"](https://trtc.io/document/74840).
+**Kwitch** is a Twitch/Kick-style live-streaming platform built on the
+[Tencent RTC (TRTC) Web Core SDK — "AtomicXCore"](https://trtc.io/document/74840),
+with its own visual identity (the "Aurora" design system — electric cyan →
+violet on deep midnight blue) and everything you need to run it in the cloud:
+Dockerfiles, Docker Compose, CI, health probes, hardened services, and
+one-click platform configs.
 
-This is a **learning product**, not a polished app. Every file, comment, and
-commit is optimized so that a developer who has *never touched TRTC* can go from
-`git clone` to *"I understand how live streaming works and I can run it with my
-own credentials"* in under an hour.
+It is still optimized for learning — every file and comment teaches you how a
+live-streaming product works — but the operational pieces are real:
 
-By the end you will understand two things clearly:
-
-1. **How to run it locally** with your own TRTC credentials (the fast, dev-only path).
-2. **What a production version looks like** and how to deploy it (the secure, server-signed path).
+- **Frontend**: Vue 3 + Vite + TypeScript, served by hardened nginx (SPA
+  fallback, immutable asset caching, security headers) or any static host.
+- **UserSig server**: Node + Express with helmet, input validation, rate
+  limiting, structured pino logs, liveness/readiness probes, graceful
+  shutdown, and integration tests.
+- **Cloud-ready, without vendor sprawl**: one vendor-neutral Docker Compose
+  stack that runs on any host behind a single public origin (nginx serves the
+  app and proxies the UserSig API — no CORS, no second hostname), plus one
+  optional managed alternative (`render.yaml`) and a GitHub Actions CI
+  pipeline.
 
 ---
 
@@ -24,8 +31,8 @@ By the end you will understand two things clearly:
 
 ```bash
 # 1. Clone and enter the repo
-git clone <this-repo-url> trtc-twitch-clone
-cd trtc-twitch-clone
+git clone <this-repo-url> kwitch
+cd kwitch
 
 # 2. Configure the frontend with your TRTC credentials (see next section)
 cp .env.example web/.env.local
@@ -40,11 +47,28 @@ npm install
 npm run dev        # a preflight check verifies your env, then Vite starts
 ```
 
-Open the printed URL (default `http://localhost:5173`), pick a display name, and
-hit **Enter**. You're logged into TRTC. Click **Go Live** to broadcast, or open
-the same app in a second tab/device and watch from the **Browse** page.
+Open the printed URL (default `http://localhost:5173`), pick a display name,
+and hit **Start watching**. You're logged into TRTC. Click **Go Live** to
+broadcast, or open the same app in a second tab/device and watch from the
+**Browse** page.
 
 That's it — no backend required for the local path.
+
+## 🐳 Production-like stack in one command
+
+```bash
+cp .env.example .env       # fill in SDK_APP_ID and SDK_SECRET_KEY
+docker compose up --build
+# open http://localhost:8080
+```
+
+This builds the frontend in the **secure, server-signed mode** and serves
+everything from a single origin — nginx hosts the app and reverse-proxies
+`/usersig` to the internal API, so there's no CORS setup and the signing
+service is never exposed publicly. The same stack runs unchanged on any
+Docker host (VPS, EC2, Compute Engine). See
+**[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**, which also covers the one
+optional managed-hosting alternative (Render).
 
 ---
 
@@ -96,9 +120,9 @@ the security reasoning: **[docs/LOCAL_VS_PRODUCTION.md](docs/LOCAL_VS_PRODUCTION
 
 ## ✨ Features (and the TRTC API behind each)
 
-A minimal but coherent Twitch/Kick experience. Every feature maps to a specific
-AtomicXCore capability — see **[docs/FEATURES.md](docs/FEATURES.md)** for the
-full table with links.
+A minimal but coherent live-streaming experience. Every feature maps to a
+specific AtomicXCore capability — see **[docs/FEATURES.md](docs/FEATURES.md)**
+for the full table with links.
 
 - **Browse / discovery** — grid of live channels (`useLiveListState.fetchLiveList`)
 - **Go Live (host)** — device selection, title, start/stop (`StreamMixer`, `startLive`/`endLive`, `useDeviceState`)
@@ -114,27 +138,60 @@ iOS/Android Core SDK track without implementing it now.
 
 ---
 
+## 🛡️ What "production ready" means here
+
+| Concern | What's in place |
+|---|---|
+| Vendor surface | One Docker stack, one public origin; the only hard dependency is TRTC itself |
+| Secrets | Server-signed UserSigs; web Docker image *cannot* embed the secret key |
+| Network exposure | UserSig API is internal-only behind the nginx proxy — no CORS surface |
+| API hardening | helmet, strict `userId` validation, 4 KB body cap, rate limiting, JSON 404/500 |
+| Observability | Structured pino logs (JSON in prod), `/healthz` + `/readyz` probes |
+| Lifecycle | Graceful SIGTERM/SIGINT shutdown with a 10s drain timeout |
+| Containers | Multi-stage, non-root images with `HEALTHCHECK`s; unprivileged nginx |
+| Frontend serving | SPA fallback, gzip, immutable asset caching, security headers |
+| CI | Lint + typecheck + tests + web build + Docker builds on every push/PR |
+| Tests | Server integration tests (vitest + supertest) covering auth, validation, limits, CORS |
+| CI-friendly builds | Preflight reads `VITE_*` from real env vars — no `.env.local` needed in CI |
+
+What's intentionally **not** included (your product decisions): user accounts /
+sessions (the sig endpoint currently trusts the client-supplied `userId` — wire
+it to your auth before launch), a database, and payments. The hardening
+checklist in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) covers these.
+
+---
+
 ## 📁 Repository layout
 
 ```
 .
-├── README.md                  # you are here
-├── .env.example               # documented template for every env var
-├── .gitignore                 # ignores .env.local, node_modules, dist, …
+├── README.md                   # you are here
+├── .env.example                # documented template for every env var
 ├── .nvmrc                      # pins the Node version
+├── docker-compose.yml          # the deploy unit: web (nginx) + internal usersig API
+├── render.yaml                 # OPTIONAL one-vendor managed alternative (Render)
+├── .github/workflows/ci.yml    # lint + typecheck + test + build + docker
 ├── docs/
 │   ├── ARCHITECTURE.md         # how LiveView / StreamMixer / state modules fit
 │   ├── LOCAL_VS_PRODUCTION.md  # the two UserSig modes + the security tradeoff
-│   ├── DEPLOYMENT.md           # deploy the frontend + the UserSig server
+│   ├── DEPLOYMENT.md           # the two deploy paths + hardening checklist
 │   └── FEATURES.md             # each feature ↔ the TRTC API that powers it
 ├── web/                        # Vue 3 + Vite + TS frontend
-│   ├── scripts/preflight.mjs   # friendly env check before dev/build
+│   ├── Dockerfile              # multi-stage build → unprivileged nginx
+│   ├── nginx.conf.template     # SPA fallback, caching, headers, /usersig proxy
+│   ├── scripts/preflight.mjs   # env check (reads env vars OR .env.local)
 │   └── src/
-│       ├── pages/              # BrowsePage, GoLivePage, WatchPage
-│       ├── components/         # chat, viewers, gifts, co-guest/host, dev banner
+│       ├── pages/              # Browse, GoLive, Watch, PkBattle, NotFound
+│       ├── components/         # chat, viewers, gifts, co-guest/host, shell
+│       ├── styles.css          # the Kwitch "Aurora" design system tokens
 │       └── trtc/               # ★ the single credential/login abstraction
 └── server/                     # Node + Express UserSig service (production path)
-    └── src/index.ts            # POST /usersig — signs with the secret key
+    ├── Dockerfile              # multi-stage, non-root, HEALTHCHECK
+    └── src/
+        ├── config.ts           # validated env config
+        ├── app.ts              # hardened express app (factory, testable)
+        ├── app.test.ts         # vitest + supertest integration tests
+        └── index.ts            # bootstrap + graceful shutdown
 ```
 
 ---
@@ -179,6 +236,6 @@ inline comments — they're meant to stay honest.
 
 ## 📄 License
 
-MIT — see [LICENSE](LICENSE). This is sample/teaching code; harden it before
-using it in production (see the checklist in
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)).
+MIT — see [LICENSE](LICENSE). Before going live, work through the hardening
+checklist in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — in particular, wire the
+UserSig endpoint to your own authentication.

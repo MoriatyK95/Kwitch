@@ -1,14 +1,14 @@
 {
-  "name": "trtc-twitch-clone",
-  "version": "1.0.0",
+  "name": "kwitch",
+  "version": "2.0.0",
   "private": true,
-  "description": "An open-source, learning-focused Twitch/Kick-style live-streaming clone built on the TRTC AtomicXCore Web SDK.",
+  "description": "Kwitch — an open-source, production-ready live-streaming platform built on the TRTC AtomicXCore Web SDK.",
   "license": "MIT",
   "engines": {
     "node": ">=20.19.0"
   },
   "scripts": {
-    "//": "Convenience scripts that delegate to web/ and server/. Run npm install in each the first time.",
+    "//": "Convenience scripts that delegate to web/ and server/. Run npm run install:all the first time.",
     "install:all": "npm --prefix web install && npm --prefix server install",
     "dev": "npm --prefix web run dev",
     "dev:server": "npm --prefix server run dev",
@@ -16,7 +16,9 @@
     "build:server": "npm --prefix server run build",
     "preview": "npm --prefix web run preview",
     "start:server": "npm --prefix server start",
-    "lint": "npm --prefix web run lint"
+    "lint": "npm --prefix web run lint",
+    "typecheck": "npm --prefix web run typecheck && npm --prefix server run typecheck",
+    "test": "npm --prefix server test"
   },
   "keywords": [
     "trtc",

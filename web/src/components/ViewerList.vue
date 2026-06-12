@@ -43,7 +43,7 @@ onMounted(() => {
 }
 
 .count {
-  color: var(--kick);
+  color: var(--brand);
 }
 
 .label {

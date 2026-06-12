@@ -104,12 +104,12 @@ function authorColor(userId: string): string {
 }
 
 .send-btn {
-  background: var(--accent);
+  background: var(--brand-gradient);
   color: #fff;
 }
 
 .send-btn:hover:not(:disabled) {
-  background: var(--accent-hover);
+  filter: brightness(1.12);
 }
 
 .send-btn:disabled {

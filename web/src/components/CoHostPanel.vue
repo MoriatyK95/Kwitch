@@ -50,7 +50,7 @@ function invite(liveId: string) {
         <p v-if="candidates.length === 0" class="hint">No other live hosts to PK right now.</p>
         <div v-for="c in candidates" :key="c.liveId" class="row">
           <span>{{ c.userName || c.userId }}</span>
-          <button class="kick invite-btn" @click="invite(c.liveId)">Invite to PK</button>
+          <button class="brand invite-btn" @click="invite(c.liveId)">Invite to PK</button>
         </div>
       </template>
     </div>
@@ -59,7 +59,7 @@ function invite(liveId: string) {
 
 <style scoped>
 .pk-title {
-  color: var(--kick);
+  color: var(--brand);
 }
 
 .body {
@@ -85,7 +85,7 @@ function invite(liveId: string) {
 
 .row.incoming {
   padding: var(--space-2);
-  background: var(--accent-soft);
+  background: var(--brand-2-soft);
   border-radius: var(--radius);
 }
 
@@ -100,7 +100,7 @@ function invite(liveId: string) {
   justify-content: space-between;
   gap: var(--space-2);
   padding: var(--space-2);
-  background: var(--kick-soft);
+  background: var(--brand-soft);
   border-radius: var(--radius);
   font-size: var(--font-sm);
 }

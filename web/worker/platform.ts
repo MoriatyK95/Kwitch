@@ -83,3 +83,79 @@ export function demoAnalytics() {
     },
   };
 }
+
+export function demoAccount(userId: string) {
+  return {
+    userId,
+    displayName: userId === 'demo' ? 'Kwitch Demo' : userId,
+    emailVerified: userId === 'demo',
+    roles: userId === 'demo' ? ['creator', 'moderator'] : ['viewer'],
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export function demoStreamKey(channelId: string) {
+  return {
+    channelId,
+    key: `sk_live_demo_${channelId}`,
+    ingestUrl: 'rtmp://ingest.livekit.example/live',
+    protocol: 'rtmp',
+    status: 'active',
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export function demoFollowers(channelId: string) {
+  return [
+    {
+      followerId: 'viewer_123',
+      channelId,
+      notifications: true,
+      followedAt: new Date().toISOString(),
+    },
+  ];
+}
+
+export function demoSafetyQueue() {
+  return [
+    {
+      id: 'mod_001',
+      channelId: 'demo',
+      type: 'chat',
+      severity: 'medium',
+      status: 'open',
+      reason: 'banned-word-match',
+      actorId: 'viewer_123',
+      message: 'Message matched a blocked phrase.',
+      createdAt: new Date().toISOString(),
+    },
+  ];
+}
+
+export function evaluateChatMessage(channelId: string, actorId: string, message: string) {
+  const moderation = demoModeration();
+  const reasons = moderation.bannedWords
+    .filter((word) => message.toLowerCase().includes(word.toLowerCase()))
+    .map((word) => `banned-word:${word}`);
+  if (!moderation.linksAllowed && /https?:\/\//i.test(message)) {
+    reasons.push('links-not-allowed');
+  }
+  return {
+    allowed: reasons.length === 0,
+    reasons,
+    event:
+      reasons.length > 0
+        ? {
+            id: `mod_${Date.now()}`,
+            channelId,
+            type: 'chat',
+            severity: 'medium',
+            status: 'open',
+            reason: reasons.join(','),
+            actorId,
+            message,
+            createdAt: new Date().toISOString(),
+          }
+        : undefined,
+  };
+}

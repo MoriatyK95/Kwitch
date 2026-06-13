@@ -3,9 +3,14 @@
  */
 import { listStreams, mintAccessToken, updateStreamMetadata, type ParticipantRole } from './livekit';
 import {
+  demoAccount,
   demoAnalytics,
   demoChannel,
+  demoFollowers,
   demoModeration,
+  demoSafetyQueue,
+  demoStreamKey,
+  evaluateChatMessage,
   platformManifest,
   readinessItems,
 } from './platform';
@@ -74,6 +79,11 @@ export default {
       return json({ items: readinessItems() });
     }
 
+    const accountMatch = path.match(/^\/accounts\/([^/]+)$/);
+    if (accountMatch && request.method === 'GET') {
+      return json({ account: demoAccount(decodeURIComponent(accountMatch[1])) });
+    }
+
     const channelMatch = path.match(/^\/channels\/([^/]+)(?:\/(moderation|analytics))?$/);
     if (channelMatch && request.method === 'GET') {
       const channelId = decodeURIComponent(channelMatch[1]);
@@ -83,19 +93,50 @@ export default {
       return json({ channel: demoChannel(channelId) });
     }
 
-    if (path === '/admin/safety/queue' && request.method === 'GET') {
+    const streamKeyMatch = path.match(/^\/channels\/([^/]+)\/stream-key(?:\/rotate)?$/);
+    if (streamKeyMatch && (request.method === 'GET' || request.method === 'POST')) {
+      return json({ streamKey: demoStreamKey(decodeURIComponent(streamKeyMatch[1])) });
+    }
+
+    const followersMatch = path.match(/^\/channels\/([^/]+)\/followers$/);
+    if (followersMatch && request.method === 'GET') {
+      return json({ followers: demoFollowers(decodeURIComponent(followersMatch[1])) });
+    }
+
+    const followMatch = path.match(/^\/channels\/([^/]+)\/follow$/);
+    if (followMatch && request.method === 'POST') {
+      const channelId = decodeURIComponent(followMatch[1]);
       return json({
-        queue: [
-          {
-            id: 'mod_001',
-            type: 'chat',
-            severity: 'medium',
-            status: 'open',
-            reason: 'banned-word-match',
-            createdAt: new Date().toISOString(),
-          },
-        ],
+        follow: {
+          channelId,
+          followerId: 'viewer_demo',
+          notifications: true,
+          followedAt: new Date().toISOString(),
+        },
       });
+    }
+
+    const evaluateMatch = path.match(/^\/channels\/([^/]+)\/moderation\/evaluate$/);
+    if (evaluateMatch && request.method === 'POST') {
+      const body = (await request.json().catch(() => ({}))) as {
+        actorId?: unknown;
+        message?: unknown;
+      };
+      return json(
+        evaluateChatMessage(
+          decodeURIComponent(evaluateMatch[1]),
+          typeof body.actorId === 'string' ? body.actorId : 'unknown',
+          typeof body.message === 'string' ? body.message : '',
+        ),
+      );
+    }
+
+    if (path === '/admin/safety/queue' && request.method === 'GET') {
+      return json({ queue: demoSafetyQueue() });
+    }
+
+    if (path.match(/^\/admin\/safety\/queue\/[^/]+\/resolve$/) && request.method === 'POST') {
+      return json({ event: { ...demoSafetyQueue()[0], status: 'resolved' } });
     }
 
     if (path === '/room-metadata' && request.method === 'POST') {

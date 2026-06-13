@@ -167,4 +167,20 @@ describe('platform production APIs', () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.moderation.bannedWords)).toBe(true);
   });
+
+  it('rotates stream keys for RTMP ingest', async () => {
+    const before = await request(app).get('/channels/demo/stream-key');
+    const after = await request(app).post('/channels/demo/stream-key/rotate');
+    expect(after.status).toBe(200);
+    expect(after.body.streamKey.key).not.toBe(before.body.streamKey.key);
+  });
+
+  it('evaluates chat messages against moderation policy', async () => {
+    const res = await request(app)
+      .post('/channels/demo/moderation/evaluate')
+      .send({ actorId: 'viewer_1', message: 'check this scam http://bad.example' });
+    expect(res.status).toBe(200);
+    expect(res.body.allowed).toBe(false);
+    expect(res.body.reasons.length).toBeGreaterThan(0);
+  });
 });

@@ -11,7 +11,11 @@ export { useRoomChat, useGuestRequests } from './useRoomData';
 export { useCreatorStudio } from './platform';
 export type {
   ChannelProfile,
+  AccountProfile,
+  FollowRecord,
+  ModerationEvent,
   ModerationSettings,
   PlatformReadinessItem,
   StreamAnalytics,
+  StreamKey,
 } from './platform';

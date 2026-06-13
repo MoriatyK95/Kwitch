@@ -1,10 +1,26 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { session, useCreatorStudio } from '@/livekit';
 
 const channelId = computed(() => session.userId || 'demo');
-const { readiness, channel, moderation, analytics, safetyQueue, loading, error, refresh } =
-  useCreatorStudio(channelId.value);
+const {
+  account,
+  readiness,
+  channel,
+  moderation,
+  analytics,
+  streamKey,
+  followers,
+  safetyQueue,
+  moderationProbe,
+  loading,
+  error,
+  refresh,
+  rotateStreamKey,
+  testModeration,
+  resolveQueueItem,
+} = useCreatorStudio(channelId.value);
+const moderationText = ref('check this scam link https://example.com');
 
 const readyCount = computed(() => readiness.value.filter((i) => i.status === 'ready').length);
 const launchScore = computed(() =>
@@ -13,6 +29,10 @@ const launchScore = computed(() =>
 
 function money(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
+}
+
+function maskedKey(key: string): string {
+  return `${key.slice(0, 10)}…${key.slice(-6)}`;
 }
 
 onMounted(refresh);
@@ -57,6 +77,11 @@ onMounted(refresh);
         <strong>{{ safetyQueue.length }}</strong>
         <span>Open trust & safety items</span>
       </article>
+      <article class="metric-card">
+        <span class="label">Followers</span>
+        <strong>{{ followers.length }}</strong>
+        <span>Notification-ready follower records</span>
+      </article>
     </section>
 
     <section class="two-col">
@@ -84,6 +109,36 @@ onMounted(refresh);
             <div><dt>Latency</dt><dd>{{ analytics.streamHealth.latencyMs }} ms</dd></div>
             <div><dt>Region</dt><dd>{{ analytics.streamHealth.region }}</dd></div>
           </dl>
+        </div>
+      </article>
+    </section>
+
+    <section class="two-col">
+      <article class="panel">
+        <div class="panel-header">Account & roles</div>
+        <div v-if="account" class="panel-body">
+          <h2>{{ account.displayName }}</h2>
+          <dl>
+            <div><dt>User ID</dt><dd>{{ account.userId }}</dd></div>
+            <div><dt>Email verified</dt><dd>{{ account.emailVerified ? 'Yes' : 'No' }}</dd></div>
+            <div><dt>Roles</dt><dd>{{ account.roles.join(', ') }}</dd></div>
+          </dl>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">RTMP / OBS ingest</div>
+        <div v-if="streamKey" class="panel-body">
+          <dl>
+            <div><dt>Server</dt><dd>{{ streamKey.ingestUrl }}</dd></div>
+            <div><dt>Stream key</dt><dd>{{ maskedKey(streamKey.key) }}</dd></div>
+            <div><dt>Status</dt><dd>{{ streamKey.status }}</dd></div>
+          </dl>
+          <button class="ghost rotate-btn" @click="rotateStreamKey">Regenerate stream key</button>
+          <p class="muted">
+            Production wiring: create a matching LiveKit Ingress per channel and store the
+            generated RTMP URL/key in a database-backed secrets store.
+          </p>
         </div>
       </article>
     </section>
@@ -120,6 +175,16 @@ onMounted(refresh);
             <div><dt>Links</dt><dd>{{ moderation.linksAllowed ? 'Allowed' : 'Blocked' }}</dd></div>
           </dl>
           <p class="muted">Banned words: {{ moderation.bannedWords.join(', ') || 'none' }}</p>
+          <div class="moderation-test">
+            <input v-model="moderationText" placeholder="Test a chat message against AutoMod" />
+            <button class="primary" @click="testModeration(moderationText)">Evaluate</button>
+          </div>
+          <p v-if="moderationProbe" class="muted">
+            Result: {{ moderationProbe.allowed ? 'allowed' : 'blocked' }}
+            <span v-if="moderationProbe.reasons.length">
+              — {{ moderationProbe.reasons.join(', ') }}
+            </span>
+          </p>
         </div>
       </article>
 
@@ -132,6 +197,21 @@ onMounted(refresh);
           <li>KYC, tax, multi-currency payouts</li>
         </ul>
       </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">Trust & safety queue</div>
+      <div class="readiness-list">
+        <div v-for="item in safetyQueue" :key="item.id" class="readiness-item">
+          <span class="status needs_config">{{ item.severity }}</span>
+          <div>
+            <strong>{{ item.reason }}</strong>
+            <p>{{ item.message || item.type }} · {{ item.status }}</p>
+            <button class="ghost small-btn" @click="resolveQueueItem(item.id)">Resolve</button>
+          </div>
+        </div>
+        <p v-if="safetyQueue.length === 0" class="muted">No open moderation items.</p>
+      </div>
     </section>
 
     <section class="panel">
@@ -306,6 +386,26 @@ dd {
 .readiness-list {
   padding: var(--space-4);
   margin: 0;
+}
+
+.rotate-btn,
+.small-btn {
+  margin-top: var(--space-3);
+}
+
+.small-btn {
+  padding: 6px 10px;
+  font-size: var(--font-xs);
+}
+
+.moderation-test {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.moderation-test input {
+  flex: 1;
 }
 
 .check-list {

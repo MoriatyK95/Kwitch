@@ -94,10 +94,18 @@ cd web && npm run dev
 | POST | `/token` | `{ identity, name, roomName, role }` | `{ token, url }` |
 | GET | `/streams` | — | `{ streams: StreamInfo[] }` |
 | POST | `/room-metadata` | `{ roomName, title, hostId, hostName }` | `{ ok: true }` |
+| GET | `/accounts/:id` | — | account/role profile |
 | GET | `/platform/readiness` | — | PRD production checklist |
 | GET | `/channels/:id` | — | channel profile |
 | GET | `/channels/:id/moderation` | — | moderation settings |
+| POST | `/channels/:id/moderation/evaluate` | `{ actorId, message }` | AutoMod allow/block result |
 | GET | `/channels/:id/analytics` | — | stream health + analytics |
+| GET | `/channels/:id/stream-key` | — | RTMP ingest key record |
+| POST | `/channels/:id/stream-key/rotate` | — | regenerated stream key |
+| POST | `/channels/:id/follow` | `{ followerId, notifications }` | follow record |
+| GET | `/channels/:id/followers` | — | followers + notification prefs |
+| GET | `/admin/safety/queue` | `?channelId=` | moderation queue |
+| POST | `/admin/safety/queue/:eventId/resolve` | — | resolved moderation event |
 
 Roles: `host` (publish), `viewer` (subscribe), `guest` (publish after host accept).
 
@@ -109,7 +117,10 @@ Roles: `host` (publish), `viewer` (subscribe), `guest` (publish after host accep
 - [x] Rate limiting on `/token`
 - [x] Input validation on identity and room names
 - [x] Creator Studio for production readiness and moderation configuration
-- [ ] Configure LiveKit Ingress for RTMP stream keys
+- [x] Stream-key API surface for RTMP/OBS ingest
+- [x] Follower/notification API surface
+- [x] Chat policy evaluation + moderation queue resolution API
+- [ ] Configure LiveKit Ingress resources behind stream-key API
 - [ ] Configure LiveKit Egress for HLS/LL-HLS into object storage + CDN
 - [ ] Authenticate `/token` — derive identity from your session/JWT before production
 - [ ] Replace in-memory demo platform state with Postgres/Redis and audit logs

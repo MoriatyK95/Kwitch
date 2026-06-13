@@ -27,6 +27,14 @@ Use **Creator Studio** in the sidebar to inspect production readiness,
 moderation settings, stream health, monetization placeholders, and the hybrid
 WebRTC/HLS delivery plan from the PRD.
 
+Creator Studio also now includes PRD-facing operational scaffolding:
+
+- account/role profile
+- RTMP/OBS stream key display + regeneration
+- follower records with notification preferences
+- AutoMod message evaluation
+- trust & safety queue resolution
+
 For Cloudflare local dev, also copy `web/.dev.vars.example` → `web/.dev.vars`.
 
 ---

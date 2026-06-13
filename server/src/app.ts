@@ -14,11 +14,20 @@ import type { Logger } from 'pino';
 import type { ServerConfig } from './config.js';
 import { listStreams, mintAccessToken, updateStreamMetadata, type ParticipantRole } from './livekit.js';
 import {
+  evaluateChatMessage,
+  followChannel,
+  getAccount,
   getAnalytics,
   getChannel,
   getModeration,
   getReadiness,
+  getStreamKey,
+  listFollowers,
+  listModerationEvents,
   platformManifest,
+  resolveModerationEvent,
+  rotateStreamKey,
+  updateAccount,
   updateChannel,
   updateModeration,
 } from './platform.js';
@@ -148,6 +157,20 @@ export function createApp(config: ServerConfig, logger: Logger): Express {
     res.json({ items: getReadiness() });
   });
 
+  app.get('/accounts/:userId', (req, res) => {
+    res.json({ account: getAccount(req.params.userId) });
+  });
+
+  app.put('/accounts/:userId', (req, res) => {
+    const { displayName, emailVerified, roles } = req.body ?? {};
+    const account = updateAccount(req.params.userId, {
+      ...(typeof displayName === 'string' ? { displayName } : {}),
+      ...(typeof emailVerified === 'boolean' ? { emailVerified } : {}),
+      ...(Array.isArray(roles) ? { roles } : {}),
+    });
+    res.json({ account });
+  });
+
   app.get('/channels/:channelId', (req, res) => {
     res.json({ channel: getChannel(req.params.channelId) });
   });
@@ -188,19 +211,52 @@ export function createApp(config: ServerConfig, logger: Logger): Express {
     res.json({ analytics: getAnalytics(req.params.channelId) });
   });
 
-  app.get('/admin/safety/queue', (_req, res) => {
+  app.get('/channels/:channelId/stream-key', (req, res) => {
+    res.json({ streamKey: getStreamKey(req.params.channelId) });
+  });
+
+  app.post('/channels/:channelId/stream-key/rotate', (req, res) => {
+    res.json({ streamKey: rotateStreamKey(req.params.channelId) });
+  });
+
+  app.post('/channels/:channelId/follow', (req, res) => {
+    const { followerId, notifications } = req.body ?? {};
+    if (!followerId || typeof followerId !== 'string') {
+      return res.status(400).json({ error: 'followerId (string) is required' });
+    }
     res.json({
-      queue: [
-        {
-          id: 'mod_001',
-          type: 'chat',
-          severity: 'medium',
-          status: 'open',
-          reason: 'banned-word-match',
-          createdAt: new Date().toISOString(),
-        },
-      ],
+      follow: followChannel(
+        req.params.channelId,
+        followerId,
+        typeof notifications === 'boolean' ? notifications : true,
+      ),
     });
+  });
+
+  app.get('/channels/:channelId/followers', (req, res) => {
+    res.json({ followers: listFollowers(req.params.channelId) });
+  });
+
+  app.post('/channels/:channelId/moderation/evaluate', (req, res) => {
+    const { actorId, message } = req.body ?? {};
+    if (!actorId || typeof actorId !== 'string') {
+      return res.status(400).json({ error: 'actorId (string) is required' });
+    }
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ error: 'message (string) is required' });
+    }
+    res.json(evaluateChatMessage(req.params.channelId, actorId, message));
+  });
+
+  app.get('/admin/safety/queue', (req, res) => {
+    const channelId = typeof req.query.channelId === 'string' ? req.query.channelId : undefined;
+    res.json({ queue: listModerationEvents(channelId) });
+  });
+
+  app.post('/admin/safety/queue/:eventId/resolve', (req, res) => {
+    const event = resolveModerationEvent(req.params.eventId);
+    if (!event) return res.status(404).json({ error: 'event not found' });
+    res.json({ event });
   });
 
   app.use((_req, res) => {

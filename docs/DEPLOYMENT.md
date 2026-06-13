@@ -4,29 +4,27 @@ Kwitch deploys as **one stack with one public origin**:
 
 ```
                         ┌────────────────────────────────────────────┐
-Browser ── HTTPS ──────▶│  web (nginx)                               │
+Browser ── HTTPS ──────▶│  web (nginx or Cloudflare Workers)         │
                         │   • serves the Vite bundle (SPA fallback)  │
-                        │   • proxies POST /usersig ───────────────┐ │
-                        │                                          ▼ │
-                        │  usersig (Node, internal only)             │
-                        │   • signs UserSigs with the secret key     │
+                        │   • handles POST /usersig on same origin   │
+                        │     (nginx proxy → Node, or Worker script) │
                         └────────────────────────────────────────────┘
 ```
 
 Because the browser only ever talks to one origin, there is **no CORS setup,
-no URL cross-wiring, and no second public hostname**. The UserSig service is
-never exposed to the internet, and the SDKSecretKey never leaves it.
+no URL cross-wiring, and no second public hostname**. The SDKSecretKey never
+leaves the signing layer (Node container or Cloudflare Worker secret).
 
-There are exactly **two supported deploy paths** — pick one:
+There are **three supported deploy paths** — pick one:
 
 | Path | Vendors involved | Best for |
 |---|---|---|
-| **1. Docker Compose** (recommended) | none — any Docker host | A VPS/VM you already have; full control |
-| **2. Render Blueprint** (optional) | one — Render | Managed hosting, zero server admin |
+| **1. Cloudflare Workers** (recommended managed) | one — Cloudflare | HTTPS, CDN, zero server admin, same-origin API |
+| **2. Docker Compose** | none — any Docker host | A VPS/VM you already have; full control |
+| **3. Render Blueprint** (optional) | one — Render | Managed hosting if you prefer Render over Cloudflare |
 
 CI (`.github/workflows/ci.yml`) lints, typechecks, tests, builds, and
-docker-builds everything on every push/PR — it runs on GitHub, which already
-hosts the repo, so it adds no extra vendor.
+docker-builds everything on every push/PR.
 
 ---
 
@@ -34,17 +32,94 @@ hosts the repo, so it adds no extra vendor.
 
 - **HTTPS is mandatory for the frontend.** Browsers only allow camera/mic
   (`getUserMedia`) on a *secure context*. `localhost` counts, so local runs
-  work over plain HTTP; for a real deployment put TLS in front (Caddy,
-  Traefik, a load balancer, or your CDN). Render does this automatically.
-- **The secret key lives only on the server.** It is set as an environment
-  variable / platform secret — never in the repo, never in the frontend build.
+  work over plain HTTP; for a real deployment put TLS in front. Cloudflare and
+  Render do this automatically.
+- **The secret key lives only on the server.** It is set as a platform secret
+  (`wrangler secret`, Docker env, Render secret) — never in the repo, never in
+  the frontend build.
 - **Set `VITE_USERSIG_MODE=server`** for the production frontend build, and
   leave `VITE_SDK_SECRET_KEY` blank. (The web Docker image deliberately has no
   build-arg for the secret key, so this mistake is impossible.)
 
 ---
 
-## 1. Docker Compose — the recommended path
+## 1. Cloudflare Workers — the recommended managed path
+
+The Vue SPA and UserSig API deploy together as **one Worker + static assets**
+on a single `*.workers.dev` URL (or your custom domain). No nginx, no second
+service, no CORS.
+
+### One-time setup
+
+1. Create a [Cloudflare account](https://dash.cloudflare.com/sign-up) and
+   install Wrangler locally (included in `web/` devDependencies after
+   `npm install`).
+2. Log in: `npx wrangler login`
+3. Copy secrets template:
+   ```bash
+   cp web/.dev.vars.example web/.dev.vars
+   # fill SDK_APP_ID and SDK_SECRET_KEY
+   ```
+4. Set production secrets (never commit these):
+   ```bash
+   cd web
+   npx wrangler secret put SDK_SECRET_KEY
+   ```
+   Set `SDK_APP_ID` in the Cloudflare dashboard under Workers → your worker →
+   Settings → Variables, or add it to `wrangler.jsonc` under `vars` (the App ID
+   is not as sensitive as the secret key).
+
+### Deploy
+
+From the repo root:
+
+```bash
+cd web
+npm install
+VITE_SDK_APP_ID=<your-app-id> \
+VITE_USERSIG_MODE=server \
+npm run deploy
+```
+
+Or from the root: `npm run deploy:cloudflare` (set `VITE_SDK_APP_ID` in your
+shell first).
+
+Wrangler prints your live URL, e.g. `https://kwitch.<account>.workers.dev`.
+
+### How it works
+
+```
+Browser ── HTTPS ──▶ Cloudflare Workers (single origin)
+                      ├─ /usersig, /healthz  → Worker script (signs UserSigs)
+                      └─ /*                    → static assets + SPA fallback
+```
+
+- `web/wrangler.jsonc` — Worker config with `run_worker_first` so API routes
+  hit the Worker; everything else serves the Vue bundle.
+- `web/worker/index.ts` — POST `/usersig`, GET `/healthz` / `/readyz`.
+- `@cloudflare/vite-plugin` — local dev runs the Worker + Vite together;
+  `npm run deploy` builds and publishes both.
+
+### Local dev with Cloudflare
+
+```bash
+cp web/.dev.vars.example web/.dev.vars   # SDK_APP_ID + SDK_SECRET_KEY
+cp .env.example web/.env.local           # VITE_SDK_APP_ID, VITE_USERSIG_MODE=server
+cd web && npm run dev
+```
+
+The Worker signs `/usersig` using `.dev.vars`. Alternatively, run the Express
+server (`npm run dev:server` at the repo root) and keep using the Vite proxy —
+but do not use both at once for `/usersig`.
+
+### Custom domain
+
+In the Cloudflare dashboard: Workers → kwitch → Settings → Domains & Routes →
+Add Custom Domain.
+
+---
+
+## 2. Docker Compose — self-hosted path
 
 Runs unchanged on any Docker host: a $5 VPS, EC2, Compute Engine, a homelab
 box, or your laptop.
@@ -83,10 +158,10 @@ yours).
 
 ---
 
-## 2. Render Blueprint — the optional managed path
+## 3. Render Blueprint — optional managed path
 
-If you'd rather not run a VM, `render.yaml` deploys both pieces to a single
-managed vendor in one click:
+If you'd rather use Render instead of Cloudflare, `render.yaml` deploys both
+pieces to a single managed vendor in one click:
 
 1. Push the repo to GitHub → Render Dashboard → **New → Blueprint** → pick the
    repo.
@@ -99,14 +174,14 @@ managed vendor in one click:
 4. Verify: `curl https://<usersig-url>/healthz` → `{"ok":true,…}`.
 
 > Render hosts the frontend and API on two subdomains, so this path — unlike
-> the Docker path — does need the one-time URL/CORS cross-wiring and sets
+> Docker or Cloudflare — does need the one-time URL/CORS cross-wiring and sets
 > `VITE_USERSIG_SERVER_URL` to a full URL.
 
 ---
 
-## 3. Configuration reference
+## 4. Configuration reference
 
-### UserSig server
+### UserSig server (Node / Docker / Render)
 
 | Env var | Default | Purpose |
 |---|---|---|
@@ -123,6 +198,17 @@ managed vendor in one click:
 Probes: `GET /healthz` (liveness, `/health` kept as an alias) and
 `GET /readyz` (readiness).
 
+### Cloudflare Worker secrets / vars
+
+| Name | Kind | Purpose |
+|---|---|---|
+| `SDK_APP_ID` | var | Your TRTC SDKAppID |
+| `SDK_SECRET_KEY` | secret | Your TRTC SDKSecretKey |
+| `USERSIG_EXPIRE_SECONDS` | var (optional) | Sig TTL, default `3600` |
+| `RATE_LIMIT_PER_MINUTE` | var (optional) | Abuse protection, default `60` |
+
+Local dev: copy `web/.dev.vars.example` → `web/.dev.vars`.
+
 ### Frontend build
 
 The build reads `VITE_*` from real environment variables **or**
@@ -135,7 +221,7 @@ The build reads `VITE_*` from real environment variables **or**
 | `VITE_USERSIG_SERVER_URL` | **empty** (same-origin, default) — set a full URL only for split deployments like Render |
 | `VITE_SDK_SECRET_KEY` | *(leave empty)* |
 
-### Web container
+### Web container (Docker only)
 
 | Env var | Default | Purpose |
 |---|---|---|
@@ -143,10 +229,9 @@ The build reads `VITE_*` from real environment variables **or**
 
 ### Local development
 
-`npm run dev` (Vite) proxies `/usersig` to `http://localhost:3001`, mirroring
-the production nginx proxy — so `VITE_USERSIG_MODE=server` with an empty
-server URL works identically in dev (`npm run dev:server` in another
-terminal) and prod.
+`npm run dev` (Vite + Cloudflare plugin) signs `/usersig` via the Worker when
+`web/.dev.vars` is present. With the Express server instead
+(`npm run dev:server`), Vite proxies `/usersig` to `http://localhost:3001`.
 
 ### WebRTC / secure-context notes
 
@@ -157,19 +242,20 @@ terminal) and prod.
 
 ---
 
-## 4. Production hardening checklist
+## 5. Production hardening checklist
 
 Already done in this repo:
 
-- [x] **Single public origin** — the UserSig API is not internet-exposed in
-      the Docker stack; no CORS surface.
-- [x] **Rate limiting** on `/usersig` (configurable via `RATE_LIMIT_PER_MINUTE`).
+- [x] **Single public origin** — UserSig API on same host (Worker, nginx, or
+      Render cross-wired once).
+- [x] **Rate limiting** on `/usersig` (configurable).
 - [x] **Input validation** — `userId` restricted to a safe charset and length;
       request bodies capped at 4 KB.
-- [x] **Security headers** — helmet on the API; nginx headers on the frontend.
-- [x] **Structured JSON logging** (pino) with health-probe noise filtered out.
-- [x] **Graceful shutdown** on SIGTERM/SIGINT for clean rolling deploys.
-- [x] **Liveness/readiness probes** on both services.
+- [x] **Security headers** — helmet on the Node API; nginx headers on Docker;
+      Cloudflare adds TLS and edge protections by default.
+- [x] **Structured JSON logging** (pino on Node) with health-probe noise filtered.
+- [x] **Graceful shutdown** on SIGTERM/SIGINT (Node service).
+- [x] **Liveness/readiness probes** on all paths.
 - [x] **Non-root containers** with Docker `HEALTHCHECK`s.
 - [x] **No secret in the client bundle** in server mode; secrets never logged.
 
@@ -182,21 +268,24 @@ Still on you (application-level decisions this demo can't make for you):
       Console immediately.
 - [ ] **Confirm the bundle is clean** — search the shipped JS for your secret
       key before going live (it must not be there).
-- [ ] **Monitoring/alerting** — ship the JSON logs to your aggregator and alert
-      on 5xx/429 rates.
+- [ ] **Monitoring/alerting** — ship logs to your aggregator and alert on 5xx/429.
 
 ---
 
-## 5. The deploy/build scripts
+## 6. The deploy/build scripts
 
 **Frontend (`web/package.json`):**
-- `npm run dev` — preflight check + Vite dev server (with `/usersig` proxy).
+- `npm run dev` — preflight + Vite dev server with Cloudflare Worker (needs `.dev.vars` for server mode).
 - `npm run build` — preflight + typecheck + Vite production build → `web/dist`.
+- `npm run deploy` — build + `wrangler deploy` to Cloudflare.
 - `npm run preview` — serve the production build locally to sanity-check it.
 - `npm run lint` / `lint:fix` / `typecheck` — what CI runs.
 
-**Server (`server/package.json`):**
+**Server (`server/package.json`):** — used by Docker Compose and optional local dev
 - `npm run dev` — `tsx watch` (hot-reload during development, pretty logs).
 - `npm run build` — `tsc` → `server/dist`.
 - `npm start` — run the compiled server (`node dist/index.js`).
 - `npm test` — vitest + supertest integration tests.
+
+**Root (`package.json`):**
+- `npm run deploy:cloudflare` — delegates to `web` deploy script.

@@ -13,6 +13,8 @@
     "prebuild": "node scripts/preflight.mjs",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "cf-typegen": "wrangler types",
     "lint": "eslint . --ext .vue,.ts,.tsx",
     "lint:fix": "eslint . --ext .vue,.ts,.tsx --fix",
     "format": "prettier --write \"src/**/*.{vue,ts,css}\"",
@@ -26,19 +28,21 @@
     "vue-router": "^4.3.0"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.7.0",
     "@tencentcloud/tuiroom-engine-js": "~4.1.1",
     "@tencentcloud/universal-api": "^2.4.0",
     "@types/node": "^20.12.0",
     "@types/pako": "^2.0.3",
     "@typescript-eslint/eslint-plugin": "^7.7.0",
     "@typescript-eslint/parser": "^7.7.0",
-    "@vitejs/plugin-vue": "^5.0.0",
+    "@vitejs/plugin-vue": "^5.2.4",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.2",
     "eslint-plugin-vue": "^9.25.0",
     "prettier": "^3.2.5",
     "typescript": "^5.4.0",
-    "vite": "^5.2.0",
-    "vue-tsc": "^2.0.0"
+    "vite": "^6.1.0",
+    "vue-tsc": "^2.0.0",
+    "wrangler": "^4.20.0"
   }
 }

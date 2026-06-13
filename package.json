@@ -15,6 +15,7 @@
     "build": "npm --prefix web run build",
     "build:server": "npm --prefix server run build",
     "preview": "npm --prefix web run preview",
+    "deploy:cloudflare": "npm --prefix web run deploy",
     "start:server": "npm --prefix server start",
     "lint": "npm --prefix web run lint",
     "typecheck": "npm --prefix web run typecheck && npm --prefix server run typecheck",

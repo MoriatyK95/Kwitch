@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, shallowRef, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { StreamMixer, useLiveListState, useVideoMixerState, useDeviceState } from 'tuikit-atomicx-vue3';
-import { TRTCMediaSourceType } from '@tencentcloud/tuiroom-engine-js';
-import { session } from '@/trtc';
+import type { Room } from 'livekit-client';
+import {
+  session,
+  roomNameForHost,
+  provideLiveKitRoom,
+  useLiveKitRoom,
+  livekitConfig,
+} from '@/livekit';
 import DeviceSelector from '@/components/DeviceSelector.vue';
 import LiveChat from '@/components/LiveChat.vue';
 import ViewerList from '@/components/ViewerList.vue';
@@ -12,49 +17,44 @@ import CoGuestPanel from '@/components/CoGuestPanel.vue';
 import CoHostPanel from '@/components/CoHostPanel.vue';
 
 const router = useRouter();
-const { startLive, endLive } = useLiveListState();
-const { addMediaSource, clearMediaSource } = useVideoMixerState();
-const { cameraList, currentCamera } = useDeviceState();
+const roomRef = shallowRef<Room | null>(null);
+provideLiveKitRoom(roomRef);
+
+const { connect, disconnect, attachLocalVideo, error: roomError } = useLiveKitRoom(roomRef);
 
 const title = ref(`${session.userName}'s stream`);
 const isLive = ref(false);
 const busy = ref(false);
 const error = ref('');
-const liveId = `live_${session.userId}`;
+const liveId = roomNameForHost(session.userId);
+const videoEl = ref<HTMLVideoElement | null>(null);
+const cameraId = ref<string>();
+const micId = ref<string>();
 
-// The host's camera device is opened by DeviceSelector, but TRTC only
-// publishes what the video mixer composites. Without adding the camera as a
-// mixer source, viewers receive audio but a black video. Add it explicitly.
-async function publishCamera() {
-  const cameraId = currentCamera.value?.deviceId || cameraList.value[0]?.deviceId || 'default';
-  await addMediaSource({
-    id: `${TRTCMediaSourceType.kCamera}_main`,
-    type: TRTCMediaSourceType.kCamera,
-    name: 'Camera',
-    camera: {
-      cameraId,
-      resolution: { width: 1280, height: 720 },
-      fps: 15,
-    },
-    layout: {
-      rect: { left: 0, top: 0, right: 1280, bottom: 720 },
-      zOrder: 0,
-    },
-    isSelected: false,
-  });
+async function updateRoomMetadata(): Promise<void> {
+  const base = livekitConfig.tokenServerUrl.replace(/\/$/, '');
+  const url = base ? `${base}/room-metadata` : '/room-metadata';
+  await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      roomName: liveId,
+      title: title.value.trim() || liveId,
+      hostId: session.userId,
+      hostName: session.userName,
+    }),
+  }).catch(() => {});
 }
 
 async function goLive() {
   busy.value = true;
   error.value = '';
   try {
-    await startLive({
-      liveId,
-      liveName: title.value.trim() || liveId,
-      isGiftEnabled: true,
-      isLikeEnabled: true,
+    await connect(session.userId, session.userName, liveId, 'host', {
+      cameraId: cameraId.value,
+      micId: micId.value,
     });
-    await publishCamera();
+    await updateRoomMetadata();
     isLive.value = true;
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
@@ -66,8 +66,7 @@ async function goLive() {
 async function stopLive() {
   busy.value = true;
   try {
-    await clearMediaSource().catch(() => {});
-    await endLive();
+    await disconnect();
     isLive.value = false;
     router.push('/');
   } catch (e) {
@@ -76,6 +75,18 @@ async function stopLive() {
     busy.value = false;
   }
 }
+
+watch([videoEl, isLive], () => {
+  if (isLive.value && videoEl.value) {
+    attachLocalVideo(videoEl.value);
+  }
+});
+
+onMounted(() => {
+  if (isLive.value && videoEl.value) {
+    attachLocalVideo(videoEl.value);
+  }
+});
 </script>
 
 <template>
@@ -93,14 +104,16 @@ async function stopLive() {
       </header>
 
       <div class="video-wrap">
-        <StreamMixer />
+        <div class="mixer-host">
+          <video ref="videoEl" autoplay playsinline muted class="preview-video" />
+        </div>
         <span v-if="isLive" class="badge-live live-overlay">Live</span>
       </div>
 
       <div v-if="!isLive" class="setup panel">
         <div class="panel-header">Stream setup</div>
         <div class="setup-body">
-          <DeviceSelector />
+          <DeviceSelector @devices-changed="(c, m) => { cameraId = c; micId = m; }" />
           <label class="title-field">
             Stream title
             <input v-model="title" placeholder="What are you streaming today?" />
@@ -124,7 +137,7 @@ async function stopLive() {
         <CoHostPanel />
       </div>
 
-      <p v-if="error" class="error">{{ error }}</p>
+      <p v-if="error || roomError" class="error">{{ error || roomError }}</p>
     </div>
 
     <aside v-if="isLive" class="sidebar">
@@ -194,9 +207,15 @@ async function stopLive() {
   overflow: hidden;
 }
 
-.video-wrap :deep(> *) {
+.mixer-host {
+  position: absolute;
+  inset: 0;
+}
+
+.preview-video {
   width: 100%;
   height: 100%;
+  object-fit: cover;
 }
 
 .live-overlay {

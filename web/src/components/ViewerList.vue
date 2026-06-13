@@ -1,12 +1,38 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
-import { useLiveAudienceState } from 'tuikit-atomicx-vue3';
+import { computed, ref, watch } from 'vue';
+import { RoomEvent } from 'livekit-client';
+import { useLiveKitRoomContext, participantList } from '@/livekit';
 
-const { audienceList, audienceCount, fetchAudienceList } = useLiveAudienceState();
+const roomRef = useLiveKitRoomContext();
+const tick = ref(0);
 
-onMounted(() => {
-  fetchAudienceList().catch((e) => console.warn('[viewers] fetch failed', e));
+watch(
+  roomRef,
+  (room, _, onCleanup) => {
+    if (!room) return;
+    const bump = () => {
+      tick.value++;
+    };
+    room.on(RoomEvent.ParticipantConnected, bump);
+    room.on(RoomEvent.ParticipantDisconnected, bump);
+    onCleanup(() => {
+      room.off(RoomEvent.ParticipantConnected, bump);
+      room.off(RoomEvent.ParticipantDisconnected, bump);
+    });
+  },
+  { immediate: true },
+);
+
+const audienceList = computed(() => {
+  tick.value;
+  return participantList(roomRef.value);
 });
+const audienceCount = computed(() => Math.max(0, audienceList.value.length - 1));
+const localIdentity = computed(() => roomRef.value?.localParticipant?.identity ?? '');
+
+const viewers = computed(() =>
+  audienceList.value.filter((p) => p.identity !== localIdentity.value),
+);
 </script>
 
 <template>
@@ -17,10 +43,10 @@ onMounted(() => {
       <span class="label">viewers</span>
     </div>
     <ul class="viewers-list">
-      <li v-if="audienceList.length === 0" class="empty">No viewers yet</li>
-      <li v-for="v in audienceList" :key="v.userId" class="viewer-item">
-        <span class="avatar">{{ (v.userName || v.userId).charAt(0).toUpperCase() }}</span>
-        {{ v.userName || v.userId }}
+      <li v-if="viewers.length === 0" class="empty">No viewers yet</li>
+      <li v-for="v in viewers" :key="v.identity" class="viewer-item">
+        <span class="avatar">{{ (v.name || v.identity).charAt(0).toUpperCase() }}</span>
+        {{ v.name || v.identity }}
       </li>
     </ul>
   </div>

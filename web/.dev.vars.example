@@ -1,0 +1,9 @@
+# Local secrets for Cloudflare Worker dev (`npm run dev` / `wrangler dev`).
+# Copy to web/.dev.vars — NEVER commit web/.dev.vars.
+# Get credentials: https://cloud.livekit.io
+
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=
+LIVEKIT_API_SECRET=
+TOKEN_EXPIRE_SECONDS=3600
+RATE_LIMIT_PER_MINUTE=60

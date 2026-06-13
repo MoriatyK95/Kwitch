@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
-import { loginToTrtc, session, randomUserId, trtcConfig } from '@/trtc';
-import DevModeBanner from '@/components/DevModeBanner.vue';
+import { initSession, session, randomUserId, livekitConfig } from '@/livekit';
 import AppSidebar from '@/components/AppSidebar.vue';
 import AppHeader from '@/components/AppHeader.vue';
 import KwitchLogo from '@/components/KwitchLogo.vue';
@@ -20,7 +19,7 @@ const isFlushPage = computed(
   () => route.name === 'watch' || route.name === 'go-live' || route.name === 'pk-arena',
 );
 
-async function enter() {
+function enter() {
   if (!userName.value.trim()) {
     error.value = 'Please enter a display name.';
     return;
@@ -28,7 +27,7 @@ async function enter() {
   loggingIn.value = true;
   error.value = '';
   try {
-    await loginToTrtc(randomUserId(), userName.value.trim());
+    initSession(randomUserId(), userName.value.trim());
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -39,8 +38,6 @@ async function enter() {
 
 <template>
   <div class="app-shell">
-    <DevModeBanner />
-
     <div v-if="!session.isLoggedIn" class="login-gate">
       <div class="login-bg" aria-hidden="true" />
       <div class="login-card">
@@ -63,8 +60,7 @@ async function enter() {
         </div>
 
         <p class="appid">
-          SDKAppID <code>{{ trtcConfig.sdkAppId || '(not set)' }}</code>
-          · <code>{{ trtcConfig.userSigMode }}</code>
+          LiveKit <code>{{ livekitConfig.url || '(not set)' }}</code>
         </p>
       </div>
     </div>

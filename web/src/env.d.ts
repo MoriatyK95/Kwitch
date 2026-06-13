@@ -1,10 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_SDK_APP_ID: string;
-  readonly VITE_USERSIG_MODE: 'local' | 'server';
-  readonly VITE_SDK_SECRET_KEY: string;
-  readonly VITE_USERSIG_SERVER_URL: string;
+  readonly VITE_LIVEKIT_URL: string;
+  readonly VITE_TOKEN_SERVER_URL: string;
 }
 
 interface ImportMeta {

@@ -2,7 +2,7 @@
   "name": "kwitch",
   "version": "2.0.0",
   "private": true,
-  "description": "Kwitch — an open-source, production-ready live-streaming platform built on the TRTC AtomicXCore Web SDK.",
+  "description": "Kwitch — an open-source live-streaming platform built on LiveKit.",
   "license": "MIT",
   "engines": {
     "node": ">=20.19.0"
@@ -15,19 +15,17 @@
     "build": "npm --prefix web run build",
     "build:server": "npm --prefix server run build",
     "preview": "npm --prefix web run preview",
+    "deploy:cloudflare": "npm --prefix web run deploy",
     "start:server": "npm --prefix server start",
     "lint": "npm --prefix web run lint",
     "typecheck": "npm --prefix web run typecheck && npm --prefix server run typecheck",
     "test": "npm --prefix server test"
   },
   "keywords": [
-    "trtc",
-    "tencent-rtc",
+    "livekit",
     "live-streaming",
     "webrtc",
     "vue3",
-    "atomicxcore",
-    "twitch-clone",
-    "learning"
+    "twitch-clone"
   ]
 }

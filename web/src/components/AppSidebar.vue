@@ -11,6 +11,7 @@ const categories = [
   { label: 'Music', path: '/', emoji: '🎵' },
   { label: 'Sports', path: '/', emoji: '⚽' },
   { label: 'Creative', path: '/', emoji: '🎨' },
+  { label: 'Creator Studio', path: '/studio', emoji: '📊', accent: true },
   { label: 'PK Arena', path: '/pk-arena', emoji: '⚔️', accent: true },
 ];
 
@@ -22,6 +23,7 @@ const followedChannels = [
 
 function isActive(label: string) {
   if (label === 'Home') return route.path === '/';
+  if (label === 'Creator Studio') return route.path === '/studio';
   if (label === 'PK Arena') return route.path === '/pk-arena';
   return false;
 }

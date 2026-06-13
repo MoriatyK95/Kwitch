@@ -1,52 +1,66 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { LiveView, useLiveListState, LiveListEvent, useLiveAudienceState } from 'tuikit-atomicx-vue3';
+import { RoomEvent, type Room } from 'livekit-client';
+import {
+  session,
+  provideLiveKitRoom,
+  useLiveKitRoom,
+  viewerCount,
+} from '@/livekit';
 import StreamMiniNav from '@/components/StreamMiniNav.vue';
 import StreamChatPanel from '@/components/StreamChatPanel.vue';
 import CoGuestPanel from '@/components/CoGuestPanel.vue';
 
 const props = defineProps<{ liveId: string }>();
 const router = useRouter();
-const { joinLive, leaveLive, subscribeEvent, unsubscribeEvent } = useLiveListState();
-const { audienceCount, fetchAudienceList } = useLiveAudienceState();
+const roomRef = shallowRef<Room | null>(null);
+provideLiveKitRoom(roomRef);
+
+const { connect, disconnect, onRemoteVideo, error: roomError } = useLiveKitRoom(roomRef);
 
 const status = ref<'joining' | 'watching' | 'ended' | 'kicked' | 'error'>('joining');
 const errorMsg = ref('');
+const audienceCount = ref(0);
+const videoEl = ref<HTMLVideoElement | null>(null);
 
 const streamTitle = computed(() => props.liveId.replace(/^live_/, '').replace(/_/g, ' ') || props.liveId);
 const hostInitial = computed(() => streamTitle.value.charAt(0).toUpperCase());
-
 const tags = ['Just Chatting', 'Live', 'English'];
 
 function formatViewers(count: number): string {
   return count.toLocaleString();
 }
 
-function handleLiveEnded() {
-  status.value = 'ended';
-}
-function handleKicked() {
-  status.value = 'kicked';
+function updateCount() {
+  audienceCount.value = viewerCount(roomRef.value);
 }
 
 onMounted(async () => {
-  fetchAudienceList().catch(() => {});
-  subscribeEvent(LiveListEvent.onLiveEnded, handleLiveEnded);
-  subscribeEvent(LiveListEvent.onKickedOutOfLive, handleKicked);
   try {
-    await joinLive({ liveId: props.liveId });
+    const room = await connect(session.userId, session.userName, props.liveId, 'viewer');
     status.value = 'watching';
+
+    room.on(RoomEvent.Disconnected, () => {
+      if (status.value === 'watching') status.value = 'ended';
+    });
+    room.on(RoomEvent.ParticipantConnected, updateCount);
+    room.on(RoomEvent.ParticipantDisconnected, updateCount);
+    updateCount();
   } catch (e) {
     status.value = 'error';
     errorMsg.value = e instanceof Error ? e.message : String(e);
   }
 });
 
+watch([videoEl, status], () => {
+  if (status.value === 'watching' && videoEl.value && roomRef.value) {
+    onRemoteVideo(videoEl.value, updateCount);
+  }
+});
+
 onUnmounted(() => {
-  unsubscribeEvent(LiveListEvent.onLiveEnded, handleLiveEnded);
-  unsubscribeEvent(LiveListEvent.onKickedOutOfLive, handleKicked);
-  leaveLive().catch(() => {});
+  disconnect().catch(() => {});
 });
 
 function backToBrowse() {
@@ -61,7 +75,9 @@ function backToBrowse() {
     <div class="content">
       <div class="player-section">
         <div class="video-wrap">
-          <LiveView v-show="status === 'watching'" />
+          <div v-show="status === 'watching'" class="player-host">
+            <video ref="videoEl" autoplay playsinline class="player-video" />
+          </div>
 
           <div v-if="status !== 'watching'" class="overlay">
             <template v-if="status === 'joining'">
@@ -80,7 +96,7 @@ function backToBrowse() {
             </template>
             <template v-else>
               <h3>Couldn't join</h3>
-              <p class="error-text">{{ errorMsg }}</p>
+              <p class="error-text">{{ errorMsg || roomError }}</p>
               <button class="primary" @click="backToBrowse">Browse channels</button>
             </template>
           </div>
@@ -148,9 +164,16 @@ function backToBrowse() {
   background: var(--video-bg);
 }
 
-.video-wrap :deep(> *) {
+.player-host {
+  position: absolute;
+  inset: 0;
+}
+
+.player-video {
   width: 100%;
   height: 100%;
+  object-fit: contain;
+  background: #000;
 }
 
 .overlay {
@@ -318,10 +341,6 @@ function backToBrowse() {
 @media (max-width: 1024px) {
   .content {
     flex-direction: column;
-  }
-
-  .chat-panel {
-    max-height: 360px;
   }
 }
 </style>

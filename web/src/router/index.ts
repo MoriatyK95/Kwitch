@@ -5,6 +5,7 @@ import { createRouter, createWebHistory } from 'vue-router';
  *   /          Browse   — grid of live channels (fetchLiveList)
  *   /go-live   GoLive   — host: device select + StreamMixer + startLive
  *   /watch/:id Watch    — viewer: LiveView + joinLive + event handling
+ *   /studio    Creator Studio — production controls and readiness
  *   /pk-arena  PK Arena — host-vs-host battle showcase
  *
  * Components are lazy-loaded so each page's SDK usage is code-split.
@@ -26,6 +27,12 @@ export const router = createRouter({
       name: 'go-live',
       component: () => import('@/pages/GoLivePage.vue'),
       meta: { title: 'Go Live' },
+    },
+    {
+      path: '/studio',
+      name: 'studio',
+      component: () => import('@/pages/CreatorStudioPage.vue'),
+      meta: { title: 'Creator Studio' },
     },
     {
       path: '/watch/:liveId',

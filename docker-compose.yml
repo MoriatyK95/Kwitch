@@ -1,38 +1,20 @@
 # =============================================================================
-# Kwitch — the whole platform from ONE vendor-neutral stack:
-#
-#   1. cp .env.example .env          # fill in SDK_APP_ID + SDK_SECRET_KEY
-#   2. docker compose up --build
-#   3. open http://localhost:8080
-#
-# Single public origin: nginx serves the frontend AND reverse-proxies
-# /usersig to the internal UserSig service. The browser never talks to a
-# second host, so there is no CORS setup, no URL cross-wiring, and the
-# SDKSecretKey never leaves the usersig container (which is not exposed
-# publicly at all).
-#
-# This stack runs unchanged on any Docker host: a VPS, EC2, Compute Engine,
-# or your laptop. Browsers only expose camera/mic on secure contexts —
-# localhost counts, so this works locally over plain HTTP; for real
-# deployments put HTTPS in front (Caddy/Traefik/load balancer/CDN).
+# Kwitch — Docker Compose (LiveKit-backed API + static web)
 # =============================================================================
 
 services:
-  usersig:
+  api:
     build: ./server
     environment:
-      SDK_APP_ID: ${SDK_APP_ID:?Set SDK_APP_ID in .env}
-      SDK_SECRET_KEY: ${SDK_SECRET_KEY:?Set SDK_SECRET_KEY in .env}
+      LIVEKIT_URL: ${LIVEKIT_URL:?Set LIVEKIT_URL in .env}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:?Set LIVEKIT_API_KEY in .env}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?Set LIVEKIT_API_SECRET in .env}
       PORT: 3001
-      # Requests arrive via the nginx proxy on the same origin, so the only
-      # origin to allow is the public one.
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
-      USERSIG_EXPIRE_SECONDS: ${USERSIG_EXPIRE_SECONDS:-3600}
+      TOKEN_EXPIRE_SECONDS: ${TOKEN_EXPIRE_SECONDS:-3600}
       RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-60}
-      # nginx forwards the real client IP in X-Forwarded-For.
       TRUST_PROXY: 'true'
       LOG_LEVEL: ${LOG_LEVEL:-info}
-    # Internal only — reachable by the web container, never published.
     expose:
       - '3001'
     restart: unless-stopped
@@ -41,14 +23,12 @@ services:
     build:
       context: ./web
       args:
-        VITE_SDK_APP_ID: ${SDK_APP_ID:?Set SDK_APP_ID in .env}
-        VITE_USERSIG_MODE: server
-        # Empty = same-origin /usersig (proxied by nginx below).
-        VITE_USERSIG_SERVER_URL: ''
+        VITE_LIVEKIT_URL: ${LIVEKIT_URL:?Set LIVEKIT_URL in .env}
+        VITE_TOKEN_SERVER_URL: ''
     environment:
-      USERSIG_UPSTREAM: http://usersig:3001/usersig
+      API_UPSTREAM: http://api:3001
     ports:
       - '8080:8080'
     depends_on:
-      - usersig
+      - api
     restart: unless-stopped

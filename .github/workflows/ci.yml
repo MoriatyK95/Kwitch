@@ -20,9 +20,8 @@ jobs:
       # Build-time placeholders so the preflight check and bundle build pass
       # in CI without real credentials. Real values are injected at deploy
       # time (Docker build args / render.yaml). Empty server URL = the
-      # default same-origin /usersig mode.
-      VITE_SDK_APP_ID: '1400000001'
-      VITE_USERSIG_MODE: server
+      # default same-origin /token mode.
+      VITE_LIVEKIT_URL: 'wss://example.livekit.cloud'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -73,7 +72,6 @@ jobs:
           context: web
           push: false
           build-args: |
-            VITE_SDK_APP_ID=1400000001
-            VITE_USERSIG_MODE=server
+            VITE_LIVEKIT_URL=wss://example.livekit.cloud
           cache-from: type=gha,scope=web
           cache-to: type=gha,scope=web,mode=max

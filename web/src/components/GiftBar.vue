@@ -1,41 +1,42 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
-import { useLiveGiftState } from 'tuikit-atomicx-vue3';
+import { useLiveKitRoomContext, useRoomChat, session } from '@/livekit';
 
-const { sendLikes, totalLikeCount, giftInfoList, refreshGiftList, sendGift } =
-  useLiveGiftState();
+const roomRef = useLiveKitRoomContext();
+const { totalLikes, sendLike } = useRoomChat(roomRef);
 
-onMounted(() => {
-  refreshGiftList().catch((e) => console.warn('[gifts] refresh failed', e));
-});
+const quickGifts = [
+  { emoji: '❤️', label: 'Heart' },
+  { emoji: '🔥', label: 'Fire' },
+  { emoji: '👑', label: 'Crown' },
+  { emoji: '🚀', label: 'Rocket' },
+  { emoji: '💎', label: 'Diamond' },
+];
 
 function like() {
-  sendLikes({ count: 1 }).catch((e) => console.warn('[gifts] like failed', e));
+  sendLike(session.userId, 1).catch(() => {});
 }
 
-function gift(giftId: string) {
-  sendGift({ giftId, count: 1 }).catch((e) => console.warn('[gifts] send failed', e));
+function gift() {
+  like();
 }
 </script>
 
 <template>
   <div class="engage panel">
     <button class="like-btn" @click="like">Like</button>
-    <span class="like-total"><strong>{{ totalLikeCount }}</strong> likes</span>
+    <span class="like-total"><strong>{{ totalLikes }}</strong> likes</span>
 
-    <div v-if="giftInfoList.length" class="gifts">
+    <div class="gifts">
       <button
-        v-for="g in giftInfoList.flatMap((cat) => cat.giftList)"
-        :key="g.giftID"
+        v-for="g in quickGifts"
+        :key="g.label"
         class="gift-btn"
-        :title="`${g.name} · ${g.coins} coins`"
-        @click="gift(g.giftID)"
+        :title="g.label"
+        @click="gift"
       >
-        <img v-if="g.iconUrl" :src="g.iconUrl" :alt="g.name" />
-        <span v-else>🎁</span>
+        <span>{{ g.emoji }}</span>
       </button>
     </div>
-    <p v-else class="gift-hint">Configure gifts in the TRTC Console to enable the gift bar.</p>
   </div>
 </template>
 
@@ -82,20 +83,10 @@ function gift(giftId: string) {
   place-items: center;
   background: var(--bg-elev-2);
   border: 1px solid var(--border);
+  font-size: 18px;
 }
 
 .gift-btn:hover {
   border-color: var(--brand);
-}
-
-.gift-btn img {
-  max-width: 100%;
-  max-height: 100%;
-}
-
-.gift-hint {
-  font-size: var(--font-xs);
-  color: var(--text-muted);
-  margin: 0;
 }
 </style>

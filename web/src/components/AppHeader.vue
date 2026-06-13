@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { session } from '@/trtc';
+import { session } from '@/livekit';
 import KwitchLogo from '@/components/KwitchLogo.vue';
 
 const route = useRoute();

@@ -1,19 +1,5 @@
 /**
- * Preflight environment check.
- *
- * Runs automatically before `npm run dev` and `npm run build` (see the
- * "predev" / "prebuild" scripts in package.json). Its job is to fail LOUDLY
- * and CLEARLY if your TRTC credentials are missing or still set to the
- * placeholder values shipped in .env.example — so a newcomer never wastes
- * time debugging a blank screen that was really just an empty SDKAppID.
- *
- * Configuration sources (matching how Vite itself resolves env):
- *   1. process.env            — how CI systems and cloud builds (Docker
- *                               build args, platform env vars…) inject
- *                               configuration. Takes precedence.
- *   2. web/.env.local         — the local-development path.
- *
- * It is intentionally dependency-free to stay fast and transparent.
+ * Preflight environment check for LiveKit configuration.
  */
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -32,14 +18,13 @@ function fail(message) {
   console.error(`\n${RED}${BOLD}✖ Preflight check failed${RESET}\n`);
   console.error(`${RED}${message}${RESET}\n`);
   console.error(
-    `${YELLOW}Fix (local dev): copy .env.example to web/.env.local and fill in your TRTC` +
-      ` credentials.\nFix (CI / cloud builds): set VITE_SDK_APP_ID and friends as environment` +
-      ` variables.\nGet credentials from the TRTC Console: https://console.trtc.io/app${RESET}\n`,
+    `${YELLOW}Fix (local dev): copy .env.example to web/.env.local and fill in LiveKit` +
+      ` credentials.\nFix (CI / cloud builds): set VITE_LIVEKIT_URL as an environment` +
+      ` variable.\nGet credentials from: https://cloud.livekit.io${RESET}\n`,
   );
   process.exit(1);
 }
 
-// 1. Start from .env.local if it exists (KEY=VALUE lines, blanks/comments ignored).
 const env = {};
 if (existsSync(envPath)) {
   for (const line of readFileSync(envPath, 'utf8').split('\n')) {
@@ -51,13 +36,7 @@ if (existsSync(envPath)) {
   }
 }
 
-// 2. Real environment variables override the file — same precedence as Vite.
-for (const key of [
-  'VITE_SDK_APP_ID',
-  'VITE_USERSIG_MODE',
-  'VITE_SDK_SECRET_KEY',
-  'VITE_USERSIG_SERVER_URL',
-]) {
+for (const key of ['VITE_LIVEKIT_URL', 'VITE_TOKEN_SERVER_URL']) {
   if (process.env[key] !== undefined && process.env[key] !== '') {
     env[key] = process.env[key];
   }
@@ -70,40 +49,23 @@ if (Object.keys(env).length === 0) {
   );
 }
 
-const appId = env.VITE_SDK_APP_ID;
-const mode = env.VITE_USERSIG_MODE || 'local';
+const livekitUrl = env.VITE_LIVEKIT_URL;
 
-if (!appId || appId === '0') {
-  fail('VITE_SDK_APP_ID is missing or still set to the placeholder "0".');
+if (!livekitUrl) {
+  fail('VITE_LIVEKIT_URL is missing. Set your LiveKit project WebSocket URL.');
 }
-if (!/^\d+$/.test(appId)) {
-  fail(`VITE_SDK_APP_ID must be a number, got "${appId}".`);
-}
-
-if (mode === 'local') {
-  const secret = env.VITE_SDK_SECRET_KEY;
-  if (!secret) {
-    fail(
-      'VITE_USERSIG_MODE=local requires VITE_SDK_SECRET_KEY so the browser can ' +
-        'sign a test UserSig.\nThis path is DEV-ONLY — see docs/LOCAL_VS_PRODUCTION.md.',
-    );
-  }
-} else if (mode === 'server') {
-  if (!env.VITE_USERSIG_SERVER_URL) {
-    console.log(
-      `${YELLOW}ℹ VITE_USERSIG_SERVER_URL is empty — using same-origin mode: the app will` +
-        ` POST to /usersig on its own origin.\n  Works out of the box with the Docker stack` +
-        ` (nginx proxies /usersig) and with the Vite dev server (dev proxy).${RESET}`,
-    );
-  }
-} else {
-  fail(`VITE_USERSIG_MODE must be "local" or "server", got "${mode}".`);
+if (!livekitUrl.startsWith('wss://') && !livekitUrl.startsWith('ws://')) {
+  fail(`VITE_LIVEKIT_URL must start with wss:// or ws://, got "${livekitUrl}".`);
 }
 
-const note =
-  mode === 'local'
-    ? `${YELLOW}(dev-only client-side signing — never ship this to production)${RESET}`
-    : `${GREEN}(server-signed — production-safe)${RESET}`;
+if (!env.VITE_TOKEN_SERVER_URL) {
+  console.log(
+    `${YELLOW}ℹ VITE_TOKEN_SERVER_URL is empty — using same-origin mode: the app will` +
+      ` POST to /token on its own origin.\n  Works with Docker (nginx proxy), Cloudflare` +
+      ` Workers, and the Vite dev server proxy.${RESET}`,
+  );
+}
+
 console.log(
-  `${GREEN}✔ Preflight OK${RESET} — SDKAppID set, UserSig mode = ${BOLD}${mode}${RESET} ${note}`,
+  `${GREEN}✔ Preflight OK${RESET} — LiveKit URL set ${GREEN}(server-signed tokens — production-safe)${RESET}`,
 );

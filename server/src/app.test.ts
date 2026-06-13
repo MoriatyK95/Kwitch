@@ -8,10 +8,11 @@ const silentLogger = pino({ level: 'silent' });
 
 function testConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
   return {
-    sdkAppId: 1400000000,
-    sdkSecretKey: 'a'.repeat(64),
+    livekitUrl: 'wss://example.livekit.cloud',
+    apiKey: 'APItestkey',
+    apiSecret: 'secret_test_key_for_jwt_signing_only',
     port: 0,
-    userSigExpireSeconds: 600,
+    tokenExpireSeconds: 600,
     corsOrigins: ['http://localhost:5173'],
     rateLimitPerMinute: 1000,
     trustProxy: false,
@@ -23,22 +24,24 @@ function testConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
 
 describe('config', () => {
   it('throws when credentials are missing', () => {
-    expect(() => loadConfig({})).toThrow(/SDK_APP_ID or SDK_SECRET_KEY/);
+    expect(() => loadConfig({})).toThrow(/LIVEKIT_URL, LIVEKIT_API_KEY, or LIVEKIT_API_SECRET/);
   });
 
   it('parses a full environment', () => {
     const config = loadConfig({
-      SDK_APP_ID: '1400123456',
-      SDK_SECRET_KEY: 'secret',
+      LIVEKIT_URL: 'wss://test.livekit.cloud',
+      LIVEKIT_API_KEY: 'APIkey',
+      LIVEKIT_API_SECRET: 'secret',
       PORT: '8080',
-      USERSIG_EXPIRE_SECONDS: '120',
+      TOKEN_EXPIRE_SECONDS: '120',
       CORS_ORIGIN: 'https://a.example, https://b.example',
       RATE_LIMIT_PER_MINUTE: '30',
       TRUST_PROXY: 'true',
     });
-    expect(config.sdkAppId).toBe(1400123456);
+    expect(config.livekitUrl).toBe('wss://test.livekit.cloud');
+    expect(config.apiKey).toBe('APIkey');
     expect(config.port).toBe(8080);
-    expect(config.userSigExpireSeconds).toBe(120);
+    expect(config.tokenExpireSeconds).toBe(120);
     expect(config.corsOrigins).toEqual(['https://a.example', 'https://b.example']);
     expect(config.rateLimitPerMinute).toBe(30);
     expect(config.trustProxy).toBe(true);
@@ -61,55 +64,60 @@ describe('health endpoints', () => {
   });
 });
 
-describe('POST /usersig', () => {
+describe('POST /token', () => {
   const app = createApp(testConfig(), silentLogger);
 
-  it('issues a sig for a valid userId', async () => {
-    const res = await request(app).post('/usersig').send({ userId: 'user_abc-123' });
+  it('issues a token for a valid request', async () => {
+    const res = await request(app).post('/token').send({
+      identity: 'user_abc-123',
+      name: 'Alice',
+      roomName: 'live_user_abc',
+      role: 'host',
+    });
     expect(res.status).toBe(200);
-    expect(typeof res.body.userSig).toBe('string');
-    expect(res.body.userSig.length).toBeGreaterThan(20);
-    expect(res.body.expire).toBe(600);
+    expect(typeof res.body.token).toBe('string');
+    expect(res.body.token.length).toBeGreaterThan(20);
+    expect(res.body.url).toBe('wss://example.livekit.cloud');
   });
 
-  it('rejects a missing userId', async () => {
-    const res = await request(app).post('/usersig').send({});
+  it('rejects a missing identity', async () => {
+    const res = await request(app).post('/token').send({ roomName: 'live_x', role: 'viewer' });
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/userId/);
+    expect(res.body.error).toMatch(/identity/);
   });
 
-  it('rejects a non-string userId', async () => {
-    const res = await request(app).post('/usersig').send({ userId: 42 });
-    expect(res.status).toBe(400);
-  });
-
-  it('rejects userIds with a hostile charset', async () => {
-    const res = await request(app)
-      .post('/usersig')
-      .send({ userId: '<script>alert(1)</script>' });
+  it('rejects invalid role', async () => {
+    const res = await request(app).post('/token').send({
+      identity: 'user1',
+      roomName: 'live_user1',
+      role: 'admin',
+    });
     expect(res.status).toBe(400);
   });
 
-  it('rejects userIds longer than 64 chars', async () => {
-    const res = await request(app)
-      .post('/usersig')
-      .send({ userId: 'x'.repeat(65) });
+  it('rejects identities with a hostile charset', async () => {
+    const res = await request(app).post('/token').send({
+      identity: '<script>',
+      roomName: 'live_x',
+      role: 'viewer',
+    });
     expect(res.status).toBe(400);
   });
 
   it('rejects oversized request bodies', async () => {
     const res = await request(app)
-      .post('/usersig')
+      .post('/token')
       .set('Content-Type', 'application/json')
-      .send(JSON.stringify({ userId: 'ok', padding: 'p'.repeat(10_000) }));
+      .send(JSON.stringify({ identity: 'ok', roomName: 'live_ok', role: 'host', padding: 'p'.repeat(10_000) }));
     expect(res.status).toBe(413);
   });
 
   it('rate-limits abusive clients', async () => {
     const limitedApp = createApp(testConfig({ rateLimitPerMinute: 2 }), silentLogger);
-    await request(limitedApp).post('/usersig').send({ userId: 'u1' });
-    await request(limitedApp).post('/usersig').send({ userId: 'u1' });
-    const res = await request(limitedApp).post('/usersig').send({ userId: 'u1' });
+    const body = { identity: 'u1', roomName: 'live_u1', role: 'viewer' };
+    await request(limitedApp).post('/token').send(body);
+    await request(limitedApp).post('/token').send(body);
+    const res = await request(limitedApp).post('/token').send(body);
     expect(res.status).toBe(429);
   });
 });

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { LiveInfo } from 'tuikit-atomicx-vue3';
+import type { StreamInfo } from '@/livekit';
 
-const props = defineProps<{
-  live: LiveInfo;
+defineProps<{
+  live: StreamInfo;
   showPk?: boolean;
   thumbTint?: string;
 }>();
@@ -27,38 +27,35 @@ function formatViewers(count: number): string {
   return String(count);
 }
 
-function hostInitial(): string {
-  const name = props.live.liveOwner?.userName || props.live.liveOwner?.userId || '?';
+function hostInitial(live: StreamInfo): string {
+  const name = live.hostName || live.hostId || '?';
   return name.charAt(0).toUpperCase();
 }
 
-function hostName(): string {
-  return props.live.liveOwner?.userName || props.live.liveOwner?.userId || 'Unknown';
+function hostName(live: StreamInfo): string {
+  return live.hostName || live.hostId || 'Unknown';
 }
 
-function thumbBackground(): Record<string, string> {
-  if (props.live.coverUrl) {
-    return { backgroundImage: `url(${props.live.coverUrl})` };
-  }
+function thumbBackground(live: StreamInfo, tint?: string): Record<string, string> {
   const idx =
-    Math.abs((props.live.liveId || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0)) %
+    Math.abs((live.liveId || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0)) %
     thumbTints.length;
-  return { backgroundColor: props.thumbTint || thumbTints[idx] };
+  return { backgroundColor: tint || thumbTints[idx] };
 }
 </script>
 
 <template>
   <article class="card" @click="$emit('click')">
-    <div class="thumb" :style="thumbBackground()">
+    <div class="thumb" :style="thumbBackground(live, thumbTint)">
       <span class="badge-live">Live</span>
       <span class="viewers">{{ formatViewers(live.currentViewerCount) }}</span>
       <span v-if="showPk" class="badge-pk pk-tag">⚔️ PK BATTLE</span>
     </div>
     <div class="meta">
-      <span class="avatar">{{ hostInitial() }}</span>
+      <span class="avatar">{{ hostInitial(live) }}</span>
       <div class="meta-text">
         <h3 class="title">{{ live.liveName || live.liveId }}</h3>
-        <p class="host">{{ hostName() }}</p>
+        <p class="host">{{ hostName(live) }}</p>
         <p class="category">{{ showPk ? 'PK Arena' : 'Just Chatting' }}</p>
       </div>
     </div>

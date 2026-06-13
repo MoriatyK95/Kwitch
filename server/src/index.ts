@@ -30,11 +30,11 @@ const server = app.listen(config.port, () => {
   logger.info(
     {
       port: config.port,
-      sdkAppId: config.sdkAppId,
+      livekitUrl: config.livekitUrl,
       corsOrigins: config.corsOrigins,
-      sigTtlSeconds: config.userSigExpireSeconds,
+      tokenTtlSeconds: config.tokenExpireSeconds,
     },
-    'UserSig server listening',
+    'LiveKit API server listening',
   );
 });
 

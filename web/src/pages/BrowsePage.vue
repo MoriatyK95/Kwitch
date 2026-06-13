@@ -1,25 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useLiveListState } from 'tuikit-atomicx-vue3';
+import { useStreamList } from '@/livekit';
 import ChannelCard from '@/components/ChannelCard.vue';
 
 const router = useRouter();
-const { liveList, fetchLiveList } = useLiveListState();
-const loading = ref(false);
+const { streams, loading, refresh } = useStreamList();
 
-const featured = computed(() => liveList.value[0] ?? null);
-
-async function refresh() {
-  loading.value = true;
-  try {
-    await fetchLiveList({ cursor: '', count: 50 });
-  } catch (e) {
-    console.warn('[browse] fetchLiveList failed', e);
-  } finally {
-    loading.value = false;
-  }
-}
+const featured = computed(() => streams.value[0] ?? null);
 
 function formatViewers(count: number): string {
   if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
@@ -41,7 +29,7 @@ onMounted(refresh);
         <span class="badge-featured">Featured Live</span>
         <h2>{{ featured.liveName || featured.liveId }}</h2>
         <p class="hero-meta">
-          {{ featured.liveOwner?.userName || featured.liveOwner?.userId }}
+          {{ featured.hostName || featured.hostId }}
           · {{ formatViewers(featured.currentViewerCount) }} watching
         </p>
         <div class="hero-actions">
@@ -69,7 +57,7 @@ onMounted(refresh);
         </div>
       </div>
 
-      <div v-else-if="liveList.length === 0" class="empty">
+      <div v-else-if="streams.length === 0" class="empty">
         <h3>No one is live right now</h3>
         <p>Be the first to go live on Kwitch.</p>
         <button class="brand" @click="router.push('/go-live')">Go Live</button>
@@ -77,7 +65,7 @@ onMounted(refresh);
 
       <div v-else class="grid">
         <ChannelCard
-          v-for="(live, i) in liveList"
+          v-for="(live, i) in streams"
           :key="live.liveId"
           :live="live"
           :show-pk="i % 4 === 0"

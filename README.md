@@ -1,257 +1,67 @@
 # 🎥 Kwitch — an open-source live-streaming platform
 
-**Kwitch** is a Twitch/Kick-style live-streaming platform built on the
-[Tencent RTC (TRTC) Web Core SDK — "AtomicXCore"](https://trtc.io/document/74840),
-with its own visual identity (the "Aurora" design system — electric cyan →
-violet on deep midnight blue) and everything you need to run it in the cloud:
-Dockerfiles, Docker Compose, CI, health probes, hardened services, and
-one-click platform configs.
+**Kwitch** is a Twitch/Kick-style live-streaming platform built on
+[LiveKit](https://livekit.io/), with the "Aurora" design system (electric cyan →
+violet on deep midnight blue) and production deploy paths: Docker Compose,
+Cloudflare Workers, and optional Render.
 
-It is still optimized for learning — every file and comment teaches you how a
-live-streaming product works — but the operational pieces are real:
-
-- **Frontend**: Vue 3 + Vite + TypeScript, served by hardened nginx (SPA
-  fallback, immutable asset caching, security headers) or any static host.
-- **UserSig server**: Node + Express with helmet, input validation, rate
-  limiting, structured pino logs, liveness/readiness probes, graceful
-  shutdown, and integration tests.
-- **Cloud-ready, without vendor sprawl**: deploy to **Cloudflare Workers** (one
-  origin, HTTPS included), run the vendor-neutral **Docker Compose** stack on
-  any host, or use the optional **Render** blueprint — plus GitHub Actions CI.
+- **Frontend**: Vue 3 + Vite + `livekit-client`
+- **API server**: Node + Express — mints LiveKit JWTs, lists active rooms
+- **Deploy**: single-origin `/token` + `/streams` via nginx, Cloudflare Worker, or Vite dev proxy
 
 ---
 
-## ⚡ 5-minute local quickstart
-
-> Prerequisites: Node ≥ 20.19 (an `.nvmrc` is included — run `nvm use`), and a
-> modern Chromium/Firefox/Safari browser. Camera/mic only work on a **secure
-> context** — `localhost` counts, so local dev works over plain HTTP.
+## ⚡ Local quickstart
 
 ```bash
-# 1. Clone and enter the repo
-git clone <this-repo-url> kwitch
-cd kwitch
+cp .env.example web/.env.local    # VITE_LIVEKIT_URL
+cp .env.example server/.env         # LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET
 
-# 2. Configure the frontend with your TRTC credentials (see next section)
-cp .env.example web/.env.local
-#   then edit web/.env.local and set:
-#     VITE_SDK_APP_ID=<your SDKAppID>
-#     VITE_SDK_SECRET_KEY=<your SDKSecretKey>   # dev-only!
-#     VITE_USERSIG_MODE=local
-
-# 3. Install and run the frontend
-cd web
-npm install
-npm run dev        # a preflight check verifies your env, then Vite starts
+cd web && npm install && npm run dev          # terminal 1
+cd server && npm install && npm run dev       # terminal 2
 ```
 
-Open the printed URL (default `http://localhost:5173`), pick a display name,
-and hit **Start watching**. You're logged into TRTC. Click **Go Live** to
-broadcast, or open the same app in a second tab/device and watch from the
-**Browse** page.
+Open `http://localhost:5173`, enter a display name, browse channels, or **Go Live**.
 
-That's it — no backend required for the local path.
-
-## ☁️ Deploy to Cloudflare (recommended managed path)
-
-```bash
-cd web
-npm install
-cp ../.env.example .env.local          # VITE_SDK_APP_ID, VITE_USERSIG_MODE=server
-cp .dev.vars.example .dev.vars         # SDK_APP_ID, SDK_SECRET_KEY (for local dev)
-npx wrangler login
-npx wrangler secret put SDK_SECRET_KEY # production secret
-VITE_SDK_APP_ID=<your-id> VITE_USERSIG_MODE=server npm run deploy
-```
-
-You get a single HTTPS URL (`*.workers.dev` or your custom domain) where the
-Vue app and `/usersig` API share one origin — no CORS, no second service.
-Details: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
-
-## 🐳 Production-like stack in one command
-
-```bash
-cp .env.example .env       # fill in SDK_APP_ID and SDK_SECRET_KEY
-docker compose up --build
-# open http://localhost:8080
-```
-
-This builds the frontend in the **secure, server-signed mode** and serves
-everything from a single origin — nginx hosts the app and reverse-proxies
-`/usersig` to the internal API, so there's no CORS setup and the signing
-service is never exposed publicly. The same stack runs unchanged on any
-Docker host (VPS, EC2, Compute Engine). See
-**[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for Cloudflare, Docker, and Render.
+For Cloudflare local dev, also copy `web/.dev.vars.example` → `web/.dev.vars`.
 
 ---
 
-## 🔑 Get your TRTC credentials
+## 🔑 LiveKit credentials
 
-You need a TRTC application's **SDKAppID** and **SDKSecretKey**.
+From [cloud.livekit.io](https://cloud.livekit.io) → your project → **Settings**:
 
-1. Go to the **[TRTC Console → Applications](https://console.trtc.io/app)** and
-   create an application (or open an existing one).
-2. Open **Application Management**. Copy the **SDKAppID** (a number) and the
-   **SDKSecretKey** (a long hex string).
-3. Paste them into `web/.env.local`:
-   - `VITE_SDK_APP_ID=` ← your SDKAppID
-   - `VITE_SDK_SECRET_KEY=` ← your SDKSecretKey *(local/dev mode only)*
-4. (Optional, no-code sanity check) The
-   **[Console UserSig generation tool](https://console.trtc.io/usersig)** can
-   mint a one-off UserSig for a userId so you can verify your app is set up
-   before writing any code.
-
-> 🔒 **Never commit real credentials.** `.gitignore` ignores all `.env*` files
-> except `.env.example`. Your real keys live in `web/.env.local` and
-> `server/.env`, which are never tracked.
-
----
-
-## 🔀 The two operating modes (the core lesson)
-
-The single most important concept in this repo is **how the app obtains a
-`UserSig`** — the credential the SDK logs in with. There are two modes, and the
-whole codebase is built so the difference lives in **exactly one file**:
-[`web/src/trtc/userSig.ts`](web/src/trtc/userSig.ts).
-
-| | **Mode A — `local`** | **Mode B — `server`** |
+| Variable | Example | Where |
 |---|---|---|
-| Where the UserSig is signed | In the browser | On your Node server |
-| Where the SDKSecretKey lives | In the client bundle 😱 | Only on the server ✅ |
-| Setup effort | Zero backend | Run the `server/` service |
-| Use for | First run, local dev | **Production** |
-| Flag | `VITE_USERSIG_MODE=local` | `VITE_USERSIG_MODE=server` |
+| `LIVEKIT_URL` / `VITE_LIVEKIT_URL` | `wss://your-project.livekit.cloud` | frontend + server |
+| `LIVEKIT_API_KEY` | `API…` | server / Worker only |
+| `LIVEKIT_API_SECRET` | long secret | server / Worker only |
 
-**Mode A is insecure** because the secret key ships to every visitor's browser —
-anyone can read it and impersonate any user. It exists only to get you running
-fast. A loud banner appears in the UI whenever it's active.
-
-Switching modes is a one-line change in `web/.env.local`. Full explanation and
-the security reasoning: **[docs/LOCAL_VS_PRODUCTION.md](docs/LOCAL_VS_PRODUCTION.md)**.
+> Never commit real keys. Only `.env.example` is tracked.
 
 ---
 
-## ✨ Features (and the TRTC API behind each)
+## ☁️ Deploy
 
-A minimal but coherent live-streaming experience. Every feature maps to a
-specific AtomicXCore capability — see **[docs/FEATURES.md](docs/FEATURES.md)**
-for the full table with links.
+See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for Cloudflare Workers, Docker Compose, and Render.
 
-- **Browse / discovery** — grid of live channels (`useLiveListState.fetchLiveList`)
-- **Go Live (host)** — device selection, title, start/stop (`StreamMixer`, `startLive`/`endLive`, `useDeviceState`)
-- **Watch (viewer)** — join a channel, graceful "stream ended"/"removed" handling (`LiveView`, `joinLive`/`leaveLive`, `LiveListEvent`)
-- **Live chat / barrage** — real-time messages (`useBarrageState`)
-- **Viewer count + list** — live audience presence (`useLiveAudienceState`)
-- **Likes + gifts** — lightweight engagement (`useLiveGiftState`)
-- **Guest star / co-guest** — viewer joins on camera (`useCoGuestState`)
-- **Host PK / raid** — two hosts co-stream across rooms (`useCoHostState`)
+```bash
+# Cloudflare
+cd web && npx wrangler secret put LIVEKIT_API_SECRET
+VITE_LIVEKIT_URL=wss://… npm run deploy
 
-Scope: **v1 is Web only.** The structure leaves room for a future native
-iOS/Android Core SDK track without implementing it now.
-
----
-
-## 🛡️ What "production ready" means here
-
-| Concern | What's in place |
-|---|---|
-| Vendor surface | Cloudflare Workers (one origin), Docker stack, or optional Render |
-| Secrets | Server-signed UserSigs; web Docker/Cloudflare builds cannot embed the secret key |
-| Network exposure | Same-origin `/usersig` — Worker script or internal nginx proxy, no CORS |
-| API hardening | helmet, strict `userId` validation, 4 KB body cap, rate limiting, JSON 404/500 |
-| Observability | Structured pino logs (JSON in prod), `/healthz` + `/readyz` probes |
-| Lifecycle | Graceful SIGTERM/SIGINT shutdown with a 10s drain timeout |
-| Containers | Multi-stage, non-root images with `HEALTHCHECK`s; unprivileged nginx |
-| Frontend serving | SPA fallback, gzip, immutable asset caching, security headers |
-| CI | Lint + typecheck + tests + web build + Docker builds on every push/PR |
-| Tests | Server integration tests (vitest + supertest) covering auth, validation, limits, CORS |
-| CI-friendly builds | Preflight reads `VITE_*` from real env vars — no `.env.local` needed in CI |
-
-What's intentionally **not** included (your product decisions): user accounts /
-sessions (the sig endpoint currently trusts the client-supplied `userId` — wire
-it to your auth before launch), a database, and payments. The hardening
-checklist in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) covers these.
-
----
-
-## 📁 Repository layout
-
-```
-.
-├── README.md                   # you are here
-├── .env.example                # documented template for every env var
-├── .nvmrc                      # pins the Node version
-├── docker-compose.yml          # self-hosted: web (nginx) + internal usersig API
-├── render.yaml                 # OPTIONAL managed alternative (Render)
-├── .github/workflows/ci.yml    # lint + typecheck + test + build + docker
-├── docs/
-│   ├── ARCHITECTURE.md         # how LiveView / StreamMixer / state modules fit
-│   ├── LOCAL_VS_PRODUCTION.md  # the two UserSig modes + the security tradeoff
-│   ├── DEPLOYMENT.md           # Cloudflare, Docker, Render + hardening checklist
-│   └── FEATURES.md             # each feature ↔ the TRTC API that powers it
-├── web/                        # Vue 3 + Vite + TS frontend + Cloudflare Worker
-│   ├── wrangler.jsonc          # Cloudflare Workers config (SPA + API routes)
-│   ├── worker/                 # UserSig API for Cloudflare (POST /usersig)
-│   ├── .dev.vars.example       # local Worker secrets template
-│   ├── Dockerfile              # multi-stage build → unprivileged nginx
-│   ├── nginx.conf.template     # SPA fallback, caching, headers, /usersig proxy
-│   ├── scripts/preflight.mjs   # env check (reads env vars OR .env.local)
-│   └── src/
-│       ├── pages/              # Browse, GoLive, Watch, PkBattle, NotFound
-│       ├── components/         # chat, viewers, gifts, co-guest/host, shell
-│       ├── styles.css          # the Kwitch "Aurora" design system tokens
-│       └── trtc/               # ★ the single credential/login abstraction
-└── server/                     # Node + Express UserSig service (production path)
-    ├── Dockerfile              # multi-stage, non-root, HEALTHCHECK
-    └── src/
-        ├── config.ts           # validated env config
-        ├── app.ts              # hardened express app (factory, testable)
-        ├── app.test.ts         # vitest + supertest integration tests
-        └── index.ts            # bootstrap + graceful shutdown
+# Docker
+cp .env.example .env && docker compose up --build
 ```
 
 ---
 
-## 📚 What to read next
+## 📁 Layout
 
-- New to the moving parts? → **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**
-- Want to understand the security model? → **[docs/LOCAL_VS_PRODUCTION.md](docs/LOCAL_VS_PRODUCTION.md)**
-- Ready to ship it? → **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**
-- Curious which API does what? → **[docs/FEATURES.md](docs/FEATURES.md)**
+```
+web/src/livekit/     # token fetch, room connect, chat, stream list
+web/worker/          # Cloudflare token + streams API
+server/src/          # Express token + streams API
+```
 
----
-
-## 🌐 Browser support & HTTPS requirement
-
-- Works in modern **Chrome / Edge / Firefox / Safari**.
-- Accessing the camera and microphone requires a **secure context**. `localhost`
-  is treated as secure, so local dev works over `http://localhost`. **In
-  production you MUST serve the frontend over HTTPS** or the browser will block
-  `getUserMedia` and you'll get no camera. See
-  [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-
----
-
-## 🧭 A note on SDK accuracy
-
-This repo was written against **`tuikit-atomicx-vue3@6.0.0`** and
-**`tls-sig-api-v2@1.0.2`**, with API names verified directly from the published
-package type definitions. Two naming clarifications worth knowing:
-
-1. The server signing library is published on npm as **`tls-sig-api-v2`** (not
-   `tls-sig-api-v2-node`, which is the *GitHub repo* name). We use the npm name.
-2. AtomicXCore does not export a ready-made `genTestUserSig`. The dev-mode
-   client signer in
-   [`web/src/trtc/genTestUserSig.ts`](web/src/trtc/genTestUserSig.ts) is a
-   faithful, browser-side port of Tencent's official UserSig algorithm
-   (HMAC-SHA256 + zlib), and produces signatures byte-identical to the official
-   server library.
-
-If a future SDK version changes a signature, follow the SDK and update the
-inline comments — they're meant to stay honest.
-
-## 📄 License
-
-MIT — see [LICENSE](LICENSE). Before going live, work through the hardening
-checklist in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — in particular, wire the
-UserSig endpoint to your own authentication.
+MIT — see [LICENSE](LICENSE).

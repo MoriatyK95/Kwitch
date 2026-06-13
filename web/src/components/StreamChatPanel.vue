@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, nextTick, watch, onMounted } from 'vue';
-import { useBarrageState, useLiveGiftState } from 'tuikit-atomicx-vue3';
+import { ref, nextTick, watch } from 'vue';
+import { useLiveKitRoomContext, useRoomChat, session } from '@/livekit';
 
-const { messageList, sendTextMessage } = useBarrageState();
-const { sendLikes, giftInfoList, refreshGiftList } = useLiveGiftState();
+const roomRef = useLiveKitRoomContext();
+const { messages, sendChat, sendLike } = useRoomChat(roomRef);
 
 const draft = ref('');
 const listEl = ref<HTMLElement | null>(null);
@@ -16,23 +16,19 @@ const quickGifts = [
   { emoji: '💎', cost: 1000, label: 'Diamond' },
 ];
 
-onMounted(() => {
-  refreshGiftList().catch(() => {});
-});
-
 async function send() {
   const text = draft.value.trim();
   if (!text) return;
   draft.value = '';
-  await sendTextMessage({ text });
+  await sendChat(text, session.userId, session.userName);
 }
 
 function like() {
-  sendLikes({ count: 1 }).catch(() => {});
+  sendLike(session.userId, 1).catch(() => {});
 }
 
 watch(
-  () => messageList.value.length,
+  () => messages.value.length,
   async () => {
     await nextTick();
     if (listEl.value) listEl.value.scrollTop = listEl.value.scrollHeight;
@@ -55,14 +51,14 @@ function authorColor(userId: string): string {
     </div>
 
     <div ref="listEl" class="messages">
-      <p v-if="messageList.length === 0" class="welcome-hint">
+      <p v-if="messages.length === 0" class="welcome-hint">
         Welcome to the stream! Say hello in chat.
       </p>
-      <div v-for="msg in messageList" :key="msg.sequence" class="msg">
-        <span class="author" :style="{ color: authorColor(msg.sender.userId) }">
-          {{ msg.sender.userName || msg.sender.userId }}:
+      <div v-for="msg in messages" :key="msg.id" class="msg">
+        <span class="author" :style="{ color: authorColor(msg.identity) }">
+          {{ msg.name || msg.identity }}:
         </span>
-        <span class="body">{{ msg.textContent }}</span>
+        <span class="body">{{ msg.text }}</span>
       </div>
     </div>
 
@@ -83,9 +79,6 @@ function authorColor(userId: string): string {
           <span class="gift-cost">{{ g.cost }}</span>
         </button>
       </div>
-      <p v-if="giftInfoList.length" class="sdk-gifts-hint">
-        TRTC gifts configured — use the gift bar below the player for catalog gifts.
-      </p>
     </div>
 
     <form class="chat-input" @submit.prevent="send">
@@ -211,12 +204,6 @@ function authorColor(userId: string): string {
   font-size: 9px;
   color: var(--gold);
   font-weight: 500;
-}
-
-.sdk-gifts-hint {
-  margin: var(--space-2) 0 0;
-  font-size: 10px;
-  color: var(--text-muted);
 }
 
 .chat-input {

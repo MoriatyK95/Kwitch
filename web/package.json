@@ -3,7 +3,7 @@
   "private": true,
   "version": "2.0.0",
   "type": "module",
-  "description": "Kwitch — Vue 3 frontend for a live-streaming platform built on the TRTC AtomicXCore Web SDK.",
+  "description": "Kwitch — Vue 3 frontend for a live-streaming platform built on LiveKit.",
   "engines": {
     "node": ">=20.19.0"
   },
@@ -21,18 +21,14 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "js-sha256": "^0.11.0",
-    "pako": "^2.1.0",
-    "tuikit-atomicx-vue3": "^6.0.0",
+    "livekit-client": "^2.9.0",
     "vue": "^3.4.0",
     "vue-router": "^4.3.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.7.0",
-    "@tencentcloud/tuiroom-engine-js": "~4.1.1",
-    "@tencentcloud/universal-api": "^2.4.0",
+    "livekit-server-sdk": "^2.9.0",
     "@types/node": "^20.12.0",
-    "@types/pako": "^2.0.3",
     "@typescript-eslint/eslint-plugin": "^7.7.0",
     "@typescript-eslint/parser": "^7.7.0",
     "@vitejs/plugin-vue": "^5.2.4",

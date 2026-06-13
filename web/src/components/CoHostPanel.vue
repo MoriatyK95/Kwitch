@@ -1,29 +1,17 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import { useCoHostState, CoHostLayoutTemplate } from 'tuikit-atomicx-vue3';
+import { useRouter } from 'vue-router';
+import { useStreamList, session, roomNameForHost, type StreamInfo } from '@/livekit';
 
-const {
-  candidates,
-  applicant,
-  connected,
-  getCoHostCandidates,
-  requestHostConnection,
-  acceptHostConnection,
-  rejectHostConnection,
-  exitHostConnection,
-} = useCoHostState();
+const router = useRouter();
+const { streams, refresh } = useStreamList();
 
-onMounted(() => {
-  getCoHostCandidates('').catch((e) => console.warn('[co-host] candidates failed', e));
-});
+const myRoom = roomNameForHost(session.userId);
 
-function invite(liveId: string) {
-  requestHostConnection({
-    liveId,
-    layoutTemplate: CoHostLayoutTemplate.HostDynamicGrid,
-    timeout: 30,
-    extensionInfo: '',
-  }).catch((e) => console.warn('[co-host] invite failed', e));
+onMounted(refresh);
+
+function invite(live: StreamInfo) {
+  router.push(`/watch/${live.liveId}`);
 }
 </script>
 
@@ -33,26 +21,18 @@ function invite(liveId: string) {
       <span class="pk-title">Host PK / Raid</span>
     </div>
     <div class="body">
-      <div v-if="applicant" class="row incoming">
-        <span>{{ applicant.userName || applicant.userId }} wants to PK</span>
-        <span class="actions">
-          <button class="primary" @click="acceptHostConnection({ liveId: applicant.liveId })">Accept</button>
-          <button @click="rejectHostConnection({ liveId: applicant.liveId })">Decline</button>
-        </span>
+      <p class="hint">Invite another live host to co-stream (opens their channel).</p>
+      <p v-if="streams.filter((s) => s.liveId !== myRoom).length === 0" class="hint">
+        No other live hosts to PK right now.
+      </p>
+      <div
+        v-for="c in streams.filter((s) => s.liveId !== myRoom)"
+        :key="c.liveId"
+        class="row"
+      >
+        <span>{{ c.hostName || c.hostId }}</span>
+        <button class="brand invite-btn" @click="invite(c)">Watch / Raid</button>
       </div>
-
-      <div v-if="connected.length" class="connected-row">
-        <span><span class="badge-pk">PK</span> {{ connected.map((c) => c.userName || c.userId).join(', ') }}</span>
-        <button @click="exitHostConnection()">End PK</button>
-      </div>
-
-      <template v-else-if="!applicant">
-        <p v-if="candidates.length === 0" class="hint">No other live hosts to PK right now.</p>
-        <div v-for="c in candidates" :key="c.liveId" class="row">
-          <span>{{ c.userName || c.userId }}</span>
-          <button class="brand invite-btn" @click="invite(c.liveId)">Invite to PK</button>
-        </div>
-      </template>
     </div>
   </div>
 </template>
@@ -80,28 +60,6 @@ function invite(liveId: string) {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  font-size: var(--font-sm);
-}
-
-.row.incoming {
-  padding: var(--space-2);
-  background: var(--brand-2-soft);
-  border-radius: var(--radius);
-}
-
-.actions {
-  display: flex;
-  gap: 6px;
-}
-
-.connected-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  background: var(--brand-soft);
-  border-radius: var(--radius);
   font-size: var(--font-sm);
 }
 

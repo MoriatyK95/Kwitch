@@ -7,7 +7,17 @@
   "assets": {
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/token", "/streams", "/room-metadata", "/health", "/healthz", "/readyz"]
+    "run_worker_first": [
+      "/token",
+      "/streams",
+      "/room-metadata",
+      "/platform/*",
+      "/channels/*",
+      "/admin/*",
+      "/health",
+      "/healthz",
+      "/readyz"
+    ]
   },
   "observability": {
     "enabled": true

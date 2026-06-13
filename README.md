@@ -6,8 +6,9 @@ violet on deep midnight blue) and production deploy paths: Docker Compose,
 Cloudflare Workers, and optional Render.
 
 - **Frontend**: Vue 3 + Vite + `livekit-client`
-- **API server**: Node + Express — mints LiveKit JWTs, lists active rooms
+- **API server**: Node + Express — mints LiveKit JWTs, lists active rooms, exposes channel/moderation/analytics APIs
 - **Deploy**: single-origin `/token` + `/streams` via nginx, Cloudflare Worker, or Vite dev proxy
+- **Production model**: LiveKit WebRTC for interactive viewing; LiveKit Egress → HLS/LL-HLS → CDN for large passive fanout
 
 ---
 
@@ -22,6 +23,9 @@ cd server && npm install && npm run dev       # terminal 2
 ```
 
 Open `http://localhost:5173`, enter a display name, browse channels, or **Go Live**.
+Use **Creator Studio** in the sidebar to inspect production readiness,
+moderation settings, stream health, monetization placeholders, and the hybrid
+WebRTC/HLS delivery plan from the PRD.
 
 For Cloudflare local dev, also copy `web/.dev.vars.example` → `web/.dev.vars`.
 
@@ -59,9 +63,9 @@ cp .env.example .env && docker compose up --build
 ## 📁 Layout
 
 ```
-web/src/livekit/     # token fetch, room connect, chat, stream list
-web/worker/          # Cloudflare token + streams API
-server/src/          # Express token + streams API
+web/src/livekit/     # token fetch, room connect, chat, stream list, platform API
+web/worker/          # Cloudflare token + streams + platform API
+server/src/          # Express token + streams + platform API
 ```
 
 MIT — see [LICENSE](LICENSE).

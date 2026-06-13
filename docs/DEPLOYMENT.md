@@ -4,10 +4,24 @@ Kwitch uses **LiveKit** for WebRTC media and a small **token API** on the same o
 
 ```
 Browser ── HTTPS ──▶ web (nginx / Cloudflare Worker)
-                      ├─ POST /token, GET /streams  → API (JWT signing)
+                      ├─ POST /token, GET /streams  → API (JWT signing + platform)
                       └─ /*                         → Vue SPA
                       room.connect(VITE_LIVEKIT_URL, token) → LiveKit Cloud
 ```
+
+## Production architecture from the PRD
+
+Kwitch now treats LiveKit as the realtime spine, not an infinite broadcast CDN:
+
+| Audience / feature | Delivery path | Why |
+|---|---|---|
+| Creator, guests, moderators, front-row viewers | **LiveKit WebRTC** | Sub-second interactivity and bidirectional media/data |
+| Large passive audience | **LiveKit Egress -> HLS/LL-HLS -> CDN** | Cost-effective fanout, ABR, cacheability |
+| OBS / Streamlabs creators | **LiveKit Ingress RTMP** | Production creator workflow |
+| Browser go-live | **LiveKit WebRTC/WHIP-style path** | Zero external software |
+
+The app includes the WebRTC path today and exposes a Creator Studio readiness
+surface for HLS/CDN, RTMP ingress, moderation, payments, and T&S work.
 
 ## Environment
 
@@ -80,6 +94,10 @@ cd web && npm run dev
 | POST | `/token` | `{ identity, name, roomName, role }` | `{ token, url }` |
 | GET | `/streams` | — | `{ streams: StreamInfo[] }` |
 | POST | `/room-metadata` | `{ roomName, title, hostId, hostName }` | `{ ok: true }` |
+| GET | `/platform/readiness` | — | PRD production checklist |
+| GET | `/channels/:id` | — | channel profile |
+| GET | `/channels/:id/moderation` | — | moderation settings |
+| GET | `/channels/:id/analytics` | — | stream health + analytics |
 
 Roles: `host` (publish), `viewer` (subscribe), `guest` (publish after host accept).
 
@@ -90,4 +108,8 @@ Roles: `host` (publish), `viewer` (subscribe), `guest` (publish after host accep
 - [x] API secret only on server / Worker
 - [x] Rate limiting on `/token`
 - [x] Input validation on identity and room names
+- [x] Creator Studio for production readiness and moderation configuration
+- [ ] Configure LiveKit Ingress for RTMP stream keys
+- [ ] Configure LiveKit Egress for HLS/LL-HLS into object storage + CDN
 - [ ] Authenticate `/token` — derive identity from your session/JWT before production
+- [ ] Replace in-memory demo platform state with Postgres/Redis and audit logs

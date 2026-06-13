@@ -151,3 +151,20 @@ describe('misc hardening', () => {
     expect(res.headers['access-control-allow-origin']).toBeUndefined();
   });
 });
+
+describe('platform production APIs', () => {
+  const app = createApp(testConfig(), silentLogger);
+
+  it('returns production readiness items', async () => {
+    const res = await request(app).get('/platform/readiness');
+    expect(res.status).toBe(200);
+    expect(res.body.items.length).toBeGreaterThan(0);
+    expect(res.body.items.some((item: { area: string }) => item.area.includes('HLS'))).toBe(true);
+  });
+
+  it('returns channel moderation settings', async () => {
+    const res = await request(app).get('/channels/demo/moderation');
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.moderation.bannedWords)).toBe(true);
+  });
+});

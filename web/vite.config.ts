@@ -32,6 +32,18 @@ export default defineConfig({
         target: process.env.API_PROXY_TARGET ?? 'http://localhost:3001',
         changeOrigin: true,
       },
+      '/platform': {
+        target: process.env.API_PROXY_TARGET ?? 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/channels': {
+        target: process.env.API_PROXY_TARGET ?? 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/admin': {
+        target: process.env.API_PROXY_TARGET ?? 'http://localhost:3001',
+        changeOrigin: true,
+      },
     },
   },
 });

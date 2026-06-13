@@ -13,6 +13,15 @@ import { pinoHttp } from 'pino-http';
 import type { Logger } from 'pino';
 import type { ServerConfig } from './config.js';
 import { listStreams, mintAccessToken, updateStreamMetadata, type ParticipantRole } from './livekit.js';
+import {
+  getAnalytics,
+  getChannel,
+  getModeration,
+  getReadiness,
+  platformManifest,
+  updateChannel,
+  updateModeration,
+} from './platform.js';
 
 const IDENTITY_PATTERN = /^[A-Za-z0-9_\-.@]{1,64}$/;
 const ROOM_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
@@ -129,6 +138,69 @@ export function createApp(config: ServerConfig, logger: Logger): Express {
       logger.error({ err }, 'update room metadata failed');
       return res.status(500).json({ error: 'failed to update metadata' });
     }
+  });
+
+  app.get('/platform/manifest', (_req, res) => {
+    res.json(platformManifest());
+  });
+
+  app.get('/platform/readiness', (_req, res) => {
+    res.json({ items: getReadiness() });
+  });
+
+  app.get('/channels/:channelId', (req, res) => {
+    res.json({ channel: getChannel(req.params.channelId) });
+  });
+
+  app.put('/channels/:channelId', (req, res) => {
+    const { displayName, category, tags, title, bio, mature } = req.body ?? {};
+    const channel = updateChannel(req.params.channelId, {
+      ...(typeof displayName === 'string' ? { displayName } : {}),
+      ...(typeof category === 'string' ? { category } : {}),
+      ...(Array.isArray(tags) ? { tags: tags.filter((t): t is string => typeof t === 'string') } : {}),
+      ...(typeof title === 'string' ? { title } : {}),
+      ...(typeof bio === 'string' ? { bio } : {}),
+      ...(typeof mature === 'boolean' ? { mature } : {}),
+    });
+    res.json({ channel });
+  });
+
+  app.get('/channels/:channelId/moderation', (req, res) => {
+    res.json({ moderation: getModeration(req.params.channelId) });
+  });
+
+  app.put('/channels/:channelId/moderation', (req, res) => {
+    const { bannedWords, slowModeSeconds, followersOnly, subscribersOnly, linksAllowed } =
+      req.body ?? {};
+    const settings = updateModeration(req.params.channelId, {
+      ...(Array.isArray(bannedWords)
+        ? { bannedWords: bannedWords.filter((w): w is string => typeof w === 'string') }
+        : {}),
+      ...(typeof slowModeSeconds === 'number' ? { slowModeSeconds } : {}),
+      ...(typeof followersOnly === 'boolean' ? { followersOnly } : {}),
+      ...(typeof subscribersOnly === 'boolean' ? { subscribersOnly } : {}),
+      ...(typeof linksAllowed === 'boolean' ? { linksAllowed } : {}),
+    });
+    res.json({ moderation: settings });
+  });
+
+  app.get('/channels/:channelId/analytics', (req, res) => {
+    res.json({ analytics: getAnalytics(req.params.channelId) });
+  });
+
+  app.get('/admin/safety/queue', (_req, res) => {
+    res.json({
+      queue: [
+        {
+          id: 'mod_001',
+          type: 'chat',
+          severity: 'medium',
+          status: 'open',
+          reason: 'banned-word-match',
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    });
   });
 
   app.use((_req, res) => {

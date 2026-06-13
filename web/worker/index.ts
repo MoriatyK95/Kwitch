@@ -2,6 +2,13 @@
  * Kwitch Cloudflare Worker — LiveKit token API + stream discovery.
  */
 import { listStreams, mintAccessToken, updateStreamMetadata, type ParticipantRole } from './livekit';
+import {
+  demoAnalytics,
+  demoChannel,
+  demoModeration,
+  platformManifest,
+  readinessItems,
+} from './platform';
 
 export interface Env {
   LIVEKIT_URL: string;
@@ -57,6 +64,38 @@ export default {
       } catch {
         return json({ error: 'failed to list streams' }, 502);
       }
+    }
+
+    if (path === '/platform/manifest' && request.method === 'GET') {
+      return json(platformManifest());
+    }
+
+    if (path === '/platform/readiness' && request.method === 'GET') {
+      return json({ items: readinessItems() });
+    }
+
+    const channelMatch = path.match(/^\/channels\/([^/]+)(?:\/(moderation|analytics))?$/);
+    if (channelMatch && request.method === 'GET') {
+      const channelId = decodeURIComponent(channelMatch[1]);
+      const child = channelMatch[2];
+      if (child === 'moderation') return json({ moderation: demoModeration() });
+      if (child === 'analytics') return json({ analytics: demoAnalytics() });
+      return json({ channel: demoChannel(channelId) });
+    }
+
+    if (path === '/admin/safety/queue' && request.method === 'GET') {
+      return json({
+        queue: [
+          {
+            id: 'mod_001',
+            type: 'chat',
+            severity: 'medium',
+            status: 'open',
+            reason: 'banned-word-match',
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      });
     }
 
     if (path === '/room-metadata' && request.method === 'POST') {

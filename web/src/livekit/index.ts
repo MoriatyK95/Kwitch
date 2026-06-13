@@ -8,3 +8,10 @@ export { useStreamList } from './streams';
 export { provideLiveKitRoom, useLiveKitRoomContext, useOptionalLiveKitRoom } from './roomContext';
 export { useLiveKitRoom, viewerCount, participantList } from './useRoom';
 export { useRoomChat, useGuestRequests } from './useRoomData';
+export { useCreatorStudio } from './platform';
+export type {
+  ChannelProfile,
+  ModerationSettings,
+  PlatformReadinessItem,
+  StreamAnalytics,
+} from './platform';

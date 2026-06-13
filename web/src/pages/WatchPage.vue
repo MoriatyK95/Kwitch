@@ -61,7 +61,9 @@ function backToBrowse() {
     <div class="content">
       <div class="player-section">
         <div class="video-wrap">
-          <LiveView v-show="status === 'watching'" />
+          <div v-show="status === 'watching'" class="player-host">
+            <LiveView />
+          </div>
 
           <div v-if="status !== 'watching'" class="overlay">
             <template v-if="status === 'joining'">
@@ -148,7 +150,15 @@ function backToBrowse() {
   background: var(--video-bg);
 }
 
-.video-wrap :deep(> *) {
+/* Only the SDK's player should fill the stage. Sizing must NOT apply to
+   overlay siblings (status overlay, live/viewer badges), so the player gets
+   its own host layer and the 100% sizing is scoped inside it. */
+.player-host {
+  position: absolute;
+  inset: 0;
+}
+
+.player-host :deep(> *) {
   width: 100%;
   height: 100%;
 }

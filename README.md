@@ -15,11 +15,9 @@ live-streaming product works — but the operational pieces are real:
 - **UserSig server**: Node + Express with helmet, input validation, rate
   limiting, structured pino logs, liveness/readiness probes, graceful
   shutdown, and integration tests.
-- **Cloud-ready, without vendor sprawl**: one vendor-neutral Docker Compose
-  stack that runs on any host behind a single public origin (nginx serves the
-  app and proxies the UserSig API — no CORS, no second hostname), plus one
-  optional managed alternative (`render.yaml`) and a GitHub Actions CI
-  pipeline.
+- **Cloud-ready, without vendor sprawl**: deploy to **Cloudflare Workers** (one
+  origin, HTTPS included), run the vendor-neutral **Docker Compose** stack on
+  any host, or use the optional **Render** blueprint — plus GitHub Actions CI.
 
 ---
 
@@ -54,6 +52,22 @@ broadcast, or open the same app in a second tab/device and watch from the
 
 That's it — no backend required for the local path.
 
+## ☁️ Deploy to Cloudflare (recommended managed path)
+
+```bash
+cd web
+npm install
+cp ../.env.example .env.local          # VITE_SDK_APP_ID, VITE_USERSIG_MODE=server
+cp .dev.vars.example .dev.vars         # SDK_APP_ID, SDK_SECRET_KEY (for local dev)
+npx wrangler login
+npx wrangler secret put SDK_SECRET_KEY # production secret
+VITE_SDK_APP_ID=<your-id> VITE_USERSIG_MODE=server npm run deploy
+```
+
+You get a single HTTPS URL (`*.workers.dev` or your custom domain) where the
+Vue app and `/usersig` API share one origin — no CORS, no second service.
+Details: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+
 ## 🐳 Production-like stack in one command
 
 ```bash
@@ -67,8 +81,7 @@ everything from a single origin — nginx hosts the app and reverse-proxies
 `/usersig` to the internal API, so there's no CORS setup and the signing
 service is never exposed publicly. The same stack runs unchanged on any
 Docker host (VPS, EC2, Compute Engine). See
-**[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**, which also covers the one
-optional managed-hosting alternative (Render).
+**[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for Cloudflare, Docker, and Render.
 
 ---
 
@@ -142,9 +155,9 @@ iOS/Android Core SDK track without implementing it now.
 
 | Concern | What's in place |
 |---|---|
-| Vendor surface | One Docker stack, one public origin; the only hard dependency is TRTC itself |
-| Secrets | Server-signed UserSigs; web Docker image *cannot* embed the secret key |
-| Network exposure | UserSig API is internal-only behind the nginx proxy — no CORS surface |
+| Vendor surface | Cloudflare Workers (one origin), Docker stack, or optional Render |
+| Secrets | Server-signed UserSigs; web Docker/Cloudflare builds cannot embed the secret key |
+| Network exposure | Same-origin `/usersig` — Worker script or internal nginx proxy, no CORS |
 | API hardening | helmet, strict `userId` validation, 4 KB body cap, rate limiting, JSON 404/500 |
 | Observability | Structured pino logs (JSON in prod), `/healthz` + `/readyz` probes |
 | Lifecycle | Graceful SIGTERM/SIGINT shutdown with a 10s drain timeout |
@@ -168,15 +181,18 @@ checklist in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) covers these.
 ├── README.md                   # you are here
 ├── .env.example                # documented template for every env var
 ├── .nvmrc                      # pins the Node version
-├── docker-compose.yml          # the deploy unit: web (nginx) + internal usersig API
-├── render.yaml                 # OPTIONAL one-vendor managed alternative (Render)
+├── docker-compose.yml          # self-hosted: web (nginx) + internal usersig API
+├── render.yaml                 # OPTIONAL managed alternative (Render)
 ├── .github/workflows/ci.yml    # lint + typecheck + test + build + docker
 ├── docs/
 │   ├── ARCHITECTURE.md         # how LiveView / StreamMixer / state modules fit
 │   ├── LOCAL_VS_PRODUCTION.md  # the two UserSig modes + the security tradeoff
-│   ├── DEPLOYMENT.md           # the two deploy paths + hardening checklist
+│   ├── DEPLOYMENT.md           # Cloudflare, Docker, Render + hardening checklist
 │   └── FEATURES.md             # each feature ↔ the TRTC API that powers it
-├── web/                        # Vue 3 + Vite + TS frontend
+├── web/                        # Vue 3 + Vite + TS frontend + Cloudflare Worker
+│   ├── wrangler.jsonc          # Cloudflare Workers config (SPA + API routes)
+│   ├── worker/                 # UserSig API for Cloudflare (POST /usersig)
+│   ├── .dev.vars.example       # local Worker secrets template
 │   ├── Dockerfile              # multi-stage build → unprivileged nginx
 │   ├── nginx.conf.template     # SPA fallback, caching, headers, /usersig proxy
 │   ├── scripts/preflight.mjs   # env check (reads env vars OR .env.local)

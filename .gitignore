@@ -31,3 +31,9 @@ pnpm-debug.log*
 # Vite / Vitest cache
 .vite/
 coverage/
+
+# Cloudflare Workers (local dev + build cache)
+.wrangler/
+web/.dev.vars
+web/.dev.vars.*
+!web/.dev.vars.example

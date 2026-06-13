@@ -92,8 +92,8 @@ if (mode === 'local') {
   if (!env.VITE_USERSIG_SERVER_URL) {
     console.log(
       `${YELLOW}ℹ VITE_USERSIG_SERVER_URL is empty — using same-origin mode: the app will` +
-        ` POST to /usersig on its own origin.\n  Works out of the box with the Docker stack` +
-        ` (nginx proxies /usersig) and with the Vite dev server (dev proxy).${RESET}`,
+        ` POST to /usersig on its own origin.\n  Works with Docker (nginx proxy), Cloudflare` +
+        ` Workers (Worker script), and the Vite dev server (proxy or Worker via .dev.vars).${RESET}`,
     );
   }
 } else {

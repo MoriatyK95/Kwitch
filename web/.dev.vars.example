@@ -1,0 +1,10 @@
+# Local secrets for `npm run dev` / `wrangler dev` (Cloudflare Worker path).
+# Copy to web/.dev.vars and fill in your TRTC credentials.
+# NEVER commit web/.dev.vars — it is gitignored.
+#
+# Get credentials: https://console.trtc.io/app
+
+SDK_APP_ID=0
+SDK_SECRET_KEY=
+USERSIG_EXPIRE_SECONDS=3600
+RATE_LIMIT_PER_MINUTE=60

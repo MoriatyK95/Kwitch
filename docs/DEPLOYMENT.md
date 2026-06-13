@@ -24,7 +24,8 @@ There are **three supported deploy paths** — pick one:
 | **3. Render Blueprint** (optional) | one — Render | Managed hosting if you prefer Render over Cloudflare |
 
 CI (`.github/workflows/ci.yml`) lints, typechecks, tests, builds, and
-docker-builds everything on every push/PR.
+docker-builds everything on every push/PR — it runs on GitHub, which already
+hosts the repo, so it adds no extra vendor.
 
 ---
 
@@ -32,8 +33,9 @@ docker-builds everything on every push/PR.
 
 - **HTTPS is mandatory for the frontend.** Browsers only allow camera/mic
   (`getUserMedia`) on a *secure context*. `localhost` counts, so local runs
-  work over plain HTTP; for a real deployment put TLS in front. Cloudflare and
-  Render do this automatically.
+  work over plain HTTP; for a real deployment put TLS in front (Caddy,
+  Traefik, a load balancer, or your CDN). Cloudflare and Render do this
+  automatically.
 - **The secret key lives only on the server.** It is set as a platform secret
   (`wrangler secret`, Docker env, Render secret) — never in the repo, never in
   the frontend build.
@@ -248,13 +250,13 @@ Already done in this repo:
 
 - [x] **Single public origin** — UserSig API on same host (Worker, nginx, or
       Render cross-wired once).
-- [x] **Rate limiting** on `/usersig` (configurable).
+- [x] **Rate limiting** on `/usersig` (configurable via `RATE_LIMIT_PER_MINUTE`).
 - [x] **Input validation** — `userId` restricted to a safe charset and length;
       request bodies capped at 4 KB.
 - [x] **Security headers** — helmet on the Node API; nginx headers on Docker;
       Cloudflare adds TLS and edge protections by default.
-- [x] **Structured JSON logging** (pino on Node) with health-probe noise filtered.
-- [x] **Graceful shutdown** on SIGTERM/SIGINT (Node service).
+- [x] **Structured JSON logging** (pino on Node) with health-probe noise filtered out.
+- [x] **Graceful shutdown** on SIGTERM/SIGINT for clean rolling deploys.
 - [x] **Liveness/readiness probes** on all paths.
 - [x] **Non-root containers** with Docker `HEALTHCHECK`s.
 - [x] **No secret in the client bundle** in server mode; secrets never logged.
@@ -268,7 +270,8 @@ Still on you (application-level decisions this demo can't make for you):
       Console immediately.
 - [ ] **Confirm the bundle is clean** — search the shipped JS for your secret
       key before going live (it must not be there).
-- [ ] **Monitoring/alerting** — ship logs to your aggregator and alert on 5xx/429.
+- [ ] **Monitoring/alerting** — ship the JSON logs to your aggregator and alert
+      on 5xx/429 rates.
 
 ---
 
@@ -276,7 +279,7 @@ Still on you (application-level decisions this demo can't make for you):
 
 **Frontend (`web/package.json`):**
 - `npm run dev` — preflight + Vite dev server with Cloudflare Worker (needs `.dev.vars` for server mode).
-- `npm run build` — preflight + typecheck + Vite production build → `web/dist`.
+- `npm run build` — preflight + typecheck + Vite production build → `web/dist/client`.
 - `npm run deploy` — build + `wrangler deploy` to Cloudflare.
 - `npm run preview` — serve the production build locally to sanity-check it.
 - `npm run lint` / `lint:fix` / `typecheck` — what CI runs.
